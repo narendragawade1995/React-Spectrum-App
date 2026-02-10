@@ -5,6 +5,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { useDispatch } from 'react-redux';
 import { resetState, setUser } from '../Redux/Slicer/UserSlice';
 import Api from '../Utilities/apiService';
+import {checkDeviceSecurity } from '../Utilities/securityCheck';
+import {scheduleTracking  } from '../Utilities/trackingScheduler';
+
+
 import CryptoJS from 'crypto-js';
 // import AzureAuth from 'react-native-azure-auth';
 import { useFocusEffect, useNavigation ,CommonActions} from '@react-navigation/native';
@@ -114,6 +118,20 @@ export default function LoginForm() {
     return decrypted;
   };
 
+  const init = async () => {
+      const security = await checkDeviceSecurity();
+
+      if (!security.safe) {
+        Alert.alert("Security Alert", security.reason);
+        return;
+      }
+
+      scheduleTracking();
+
+      // check every 15 minutes
+      setInterval(scheduleTracking, 900000);
+    };
+
   const onSubmit = async (data) => {
     try {
       const encryptedUsername = encryptCredentials(data.username);
@@ -148,6 +166,7 @@ export default function LoginForm() {
       Alert.alert('Error', 'Invalid Username and Password');
     }
   };
+
 
   const AzurehandleLogin = () => {
     Linking.openURL('https://testapp.edelweissarc.in?from=mobile');
