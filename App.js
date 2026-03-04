@@ -6,7 +6,7 @@
  */
 
 import 'react-native-gesture-handler';
-import React from 'react';
+import React,{useState} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -46,12 +46,16 @@ const {LightTheme } = adaptNavigationTheme({reactNavigationLight:DefaultTheme})
 // const Drawer = createDrawerNavigator()
 function App() {
 
-  const {userInfo:{userDetails}} = useSelector(state=>state.USER) 
+  const {userInfo:{userDetails}} = useSelector(state=>state.USER);
+       
+ 
+
   return (
  
     <NavigationContainer ref={navigationref}>
+      <Drawerlist/>
      
-         {userDetails.length > 0 ?  <Drawerlist/> : <LoginForm/>} 
+         {/* {userDetails.length > 0 ?  <Drawerlist/> : <LoginForm/>}  */}
        
      </NavigationContainer>
 

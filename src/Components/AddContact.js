@@ -15,7 +15,6 @@ const ResponseForm = ({ route, ...props }) => {
   const contactType = watch('contactType');
   const borrowerType = watch('borrowerType');
   const phoneNumberType = watch('phoneNumberType');
-
   const contactTypeData = [
     { label: 'Phone Number', value: 'Phone Number' },
     { label: 'Email Id', value: 'Email Id' },

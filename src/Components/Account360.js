@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View, Animated, TouchableOpacity, StatusBar } from "react-native";
-import { Text } from "react-native-paper";
+import { ScrollView, StyleSheet, View, Animated, TouchableOpacity, StatusBar, } from "react-native";
+import { Text ,Appbar} from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Ensure you have this
 import Api from "../Utilities/apiService";
 import { COLORS } from "../theme/theme";
 import Loader from "./Loader";
 
-const Account360 = ({ route }) => {
+const Account360New = ({ route ,navigation}) => {
   const [loandata, setLoandata] = useState([]);
   const [data360, set360data] = useState([]);
   const [linkaccount, setLinkaccount] = useState([]);
   const [loader, setLoader] = useState(true);
   const [expandedSections, setExpandedSections] = useState({});
-  const [accountdetails, setAccountdetails] = useState({});
 
 
   const [animations] = useState({
@@ -50,36 +49,11 @@ const Account360 = ({ route }) => {
       );
       if (result?.[0]?.['Link Loan account number']) {
         setLinkaccount(result[0]['Link Loan account number'].split('<br>'));
-      }
+      };
+      if(result  ){
       set360data(result);
-      setAccountdetails({
-        financial:{
-          "Acquired POS": result[0]['Acq POS'],
-          "Current POS": result[0]['POS'],
-          "Current TOS": result[0]['TOS'],
-          "EMI Outstanding": result[0]['EMI Outstanding'],
-          "Overdue Amount": result[0]['Overdue Amount']
-        },
-
-        accountInformation:{
-          "Account No." : result[0]['Account no'],
-          "Name" : result[0]['Name'],
-          "Selling Bank" : result[0]['Selling Bank'],
-          "Trust Code" : result[0]['Trust code'],
-          "Loan Type" : result[0]['Loan Type'],
-          "Deal Type" : result[0]['Deal Type'],
-          "Zone" : result[0]['Zone'],
-          "Allocate To" : result[0]['Allocate to']
-
-        },
-        loan_details:{
-          "Disbursement Date":result[0]['Disbursement date'],
-          "Disbursement Amount":result[0]['Disbursement amount'],
-          "NPA Date":result[0]['NPA Date'],
-          "EMI Amount":result[0]['EMI Amount'],
-
-        }
-      })
+      
+    }
       setLoader(false);
     } catch (error) {
       console.log(error);
@@ -140,7 +114,7 @@ const Account360 = ({ route }) => {
                 <Text style={styles.detailLabel}>
                   {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
                 </Text>
-                <Text style={styles.detailValue}>{value}</Text>
+                <Text style={styles.detailValue}>{value || ''}</Text>
               </View>
             ))}
           </View>
@@ -152,8 +126,19 @@ const Account360 = ({ route }) => {
   return (
     <View style={styles.mainctr}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-      {data360.length > 0 && (
+         {/* <Appbar.Header style={styles.header}>
+              <Appbar.BackAction onPress={() => navigation?.goBack()} color={COLORS.white} />
+              <Appbar.Content title="Account Details" titleStyle={styles.headerTitle} />
+               
+            </Appbar.Header> */}
+      {data360?.length > 0 && (
         <View style={styles.container}>
+            <TouchableOpacity
+                    onPress={() => navigation?.goBack()}
+                    style={styles.backBtn}
+                  >
+                    <Text style={styles.backIcon}>←</Text>
+                  </TouchableOpacity>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>360° View</Text>
             <Text style={styles.accountNumber}>{data360[0]['Account no']}</Text>
@@ -169,7 +154,7 @@ const Account360 = ({ route }) => {
             {renderExpandableSection('Resolution Status', 'check-circle', 'resolution', data360[0],  COLORS.primary)}
             {renderExpandableSection('Legal details', 'gavel', 'legal', data360[0], COLORS.primary)}
             {renderExpandableSection('Other Link loans', 'link-box', 'other_loan', data360[0], COLORS.primary)}
-            {loandata.length && renderExpandableSection('Collateral Details', 'city', 'collateral', loandata[0],  COLORS.primary)}
+            {Array.isArray(loandata) &&  loandata.length  > 0 && renderExpandableSection('Collateral Details', 'city', 'collateral', loandata[0],  COLORS.primary)}
           </ScrollView>
         </View>
       )}
@@ -186,6 +171,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+    backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    color: '#fff',
+    fontSize: 18,
+    lineHeight: 22,
   },
   header: {
     backgroundColor: COLORS.primary,
@@ -211,7 +209,9 @@ const styles = StyleSheet.create({
   scrollView: {
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom:25
+    paddingBottom:50,
+    marginBottom:20
+
   },
   sectionContainer: {
     backgroundColor: '#fff',
@@ -272,4 +272,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default Account360;
+export default Account360New;

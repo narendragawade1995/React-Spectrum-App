@@ -17,9 +17,7 @@ const AddressForm = ({ route, ...props }) => {
     names: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const selectedBorrowerType = watch('borrower_type');
-
   const addressTypes = [
     { label: 'Correspondence', value: 'Correspondence' },
     { label: 'Office', value: 'Office' },

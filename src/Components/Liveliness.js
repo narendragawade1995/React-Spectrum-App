@@ -4,8 +4,8 @@ import { TextInput, Button, useTheme, Text } from 'react-native-paper';
 import { Dropdown } from 'react-native-element-dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import Api from '../Utilities/apiService';
-
-const Liveliness = ({ route, ...props }) => {
+ 
+const Liveliness = ({ route, navigation, ...props }) => {
   const [borrowerTypes, setBorrowerTypes] = useState([]);
   const [customerNames, setCustomerNames] = useState([]);
   const [customerlist, setCustomerlist] = useState({ allcustomer: [], selectedcustomer: '' });

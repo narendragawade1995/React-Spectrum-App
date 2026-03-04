@@ -29,6 +29,21 @@ import Borrowerdetails from '../Components/unsecure/borrowerdetails';
 import DispositionHistory from '../Components/DispositionHistory';
 import SyncIcon from '../Components/SyncIcon ';
 import Usecuredisposition from '../Components/unsecure/disposition';
+import AccountDetailsScreen from '../Components/AccountDetailsScreen';
+import Account360New from '../Components/Account360New';
+import CustomerListScreen from '../Components/CustomerListScreen';
+import AddressDetails from '../Components/CustomerAddress';
+import CustomerContactDetails from '../Components/CustomerContact';
+import CustomerAddContact from '../Components/CustomerAddContact';
+import CustomerAddressForm from '../Components/CustomerAddaddress';
+import ResolutionNew from '../Components/ResolutionNew';
+import LivelinessNew from '../Components/LivelinessNew';
+import AllocatedAccountsScreen from '../Components/AllocatedAccountsScreen';
+import AllocatedAccountsScreenfinal from '../Components/AllocatedAccountsScreen_final';
+import AllocatedAccountsScreenWithTracking from '../Components/AllocatedAccountsScreen_withTracking';
+import CustomerAddressDetails from '../Components/AddressNew';
+import DispositionHistoryScreen from '../Components/DispositionHistoryScreen';
+import SplashScreen from '../Components/SplashScreen';
 
 const AppStackNav = ()=>{
     const Stack =  createNativeStackNavigator();
@@ -39,29 +54,31 @@ const AppStackNav = ()=>{
         );
     }
     const screens = [
+        { name: 'splash', label:'splash',component: SplashScreen },
+
         { name: 'Login', label:'Login',component: LoginForm },
         // { name: 'Home', label:'Secure',component: Home },
-        { name: 'Home', label:'Secure',component:SecureData },
+        { name: 'Home', label:'Secure',component:AllocatedAccountsScreenWithTracking },
         // { name: 'Disposition', label:'Disposition',component: Disposition },
-        { name: 'AddAddress', label:'Add Address',component: AddressForm },
-        { name: 'AddContact', label:'Add Contact',component: ResponseForm },
-        { name: 'Contacts', label:'Contacts',component: ContactDetails },
-        { name: 'AccDetails', label:'Account Details',component: AccountDetails },
-        { name: 'Account360', label:'360 View',component: Account360 },
+
+        { name: 'AddAddress', label:'Add Address',component: CustomerAddressForm },
+        { name: 'AddContact', label:'Add Contact',component: CustomerAddContact },
+        { name: 'Contacts', label:'Contacts',component: CustomerContactDetails },
+        { name: 'AccDetails', label:'Account Details',component: AccountDetailsScreen },
+        { name: 'Account360', label:'360 View',component: Account360New },
         { name: 'FutuCom', label:' ',component: FutureComp },
-        { name: 'Address', label:'Address',component: Address },
-        { name: 'Contact', label:'Contact',component: ContactDetails },
-        { name: 'Liveliness', label:'Liveliness',component: Liveliness },
-        { name: 'CustomerList', label:'Customer List',component: CustomerList },
-        { name: 'Resolution', label:'Resolution Recommendation',component: Resolution },
+        { name: 'Address', label:'Customer Address',component: CustomerAddressDetails },
+        { name: 'Contact', label:'Contact',component: CustomerContactDetails },
+        { name: 'Liveliness', label:'Liveliness',component: LivelinessNew },
+        { name: 'CustomerList', label:'Customer List',component: CustomerListScreen },
+        { name: 'Resolution', label:'Resolution Recommendation',component: ResolutionNew },
         { name: 'todolist', label:'To-Do List',component: Todolist },
         { name: 'DispositionNew', label:'Disposition',component:  DispositionNew },
         { name: 'accountsearch', label:'Account Search',component: AccountSearch },
         { name: 'Auth', label:'Account Search',component: AuthComponent },
         { name: 'Unsecure', label:'Unsecure',component: Borrowerdetails },
         { name: 'Disposirion', label:'UnsecureDisposition',component: Usecuredisposition },
-
-        { name: 'dishistory', label:'Disposition History',component: DispositionHistory }
+        { name: 'dishistory', label:'Disposition History',component: DispositionHistoryScreen }
 
         // { name: 'Notification', label:'',component: Notification },
         // Add more screens as needed
@@ -71,8 +88,8 @@ const AppStackNav = ()=>{
                  {
                     screens.map((itm,index)=>(
                         <Stack.Screen key={index + itm} name={itm.name}  component={itm.component} options={{headerLeft:()=>{
-                            return (itm.name == 'Home' || itm.name == 'Unsecure') ? headerLeft():null
-                        },headerShown: (itm.name == 'Login' || itm.name == 'Auth' || itm.name == 'Account360'  )? false:true ,headerTitle:itm.label,headerRight:()=>{
+                            return (itm.name == 'Home1' || itm.name == 'Unsecure') ? headerLeft():null
+                        },headerShown: (itm.name == 'splash' || itm.name == 'Home' || itm.name == 'CustomerList' ||itm.name == 'Login' || itm.name == 'Auth' || itm.name == 'Account360' ||  itm.name == 'AccDetails'  )? false:true ,headerTitle:itm.label,headerRight:()=>{
                             return itm.name == 'Home' ?  <SyncIcon itemsToSync={10}  />: ''
                         }}} />
              

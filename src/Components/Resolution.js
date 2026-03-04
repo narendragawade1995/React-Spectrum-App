@@ -5,9 +5,8 @@ import { Card, Text, Button } from "react-native-paper";
 import { COLORS } from "../theme/theme";
 import Api from "../Utilities/apiService";
 import Loader from './Loader'; // Import your custom loader component
-import AccountDetails from "./AccountDetails";
 // import Pdf from 'react-native-pdf';
-
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 const Resolution = ({ route }) => {
     const [resolutionRecommendation, setResolutionRecommendation] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -103,17 +102,12 @@ const Resolution = ({ route }) => {
                 </View>
             )}
             <CollateralModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
+                visible={showcollateral}
+                onClose={() => setShowcollateral(false)}
                 collaterals={collateralData}
                 loading={collateralLoading}
             />
-             {/* <PdfModal
-                visible={pdfModalVisible}
-                onClose={() => setPdfModalVisible(false)}
-                source={{ uri: 'https://uatarcretailreports.edelweissarc.in/assets/Resolution_recommedation.pdf', cache: true }}
-            /> */}
-            { showcollateral && <AccountDetails route={route2} loanAccountNo={selectaccount} fromresolution={true}/> }
+              
         </ScrollView>
     );
 };
@@ -167,29 +161,7 @@ const ModalContent = ({ label, value }) => (
     </View>
 );
 
-// const PdfModal = ({ visible, onClose, source }) => (
-//     <Modal visible={visible} transparent={true} animationType="slide">
-//         <View style={styles.modalContainer}>
-//             <View style={styles.pdfContent}>
-//                 <Pdf
-//                     source={source}
-//                     onLoadComplete={(numberOfPages, filePath) => {
-//                         console.log(`Number of pages: ${numberOfPages}`);
-//                     }}
-//                     onPageChanged={(page, numberOfPages) => {
-//                         console.log(`Current page: ${page}`);
-//                     }}
-//                     onError={(error) => {
-//                         console.log(error);
-//                     }}
-//                     style={styles.pdf}
-//                 />
-//                 <Button onPress={onClose}>Close</Button>
-//             </View>
-//         </View>
-//     </Modal>
-// );
-
+ 
 const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,

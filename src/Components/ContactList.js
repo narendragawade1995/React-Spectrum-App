@@ -306,8 +306,7 @@ const Loan360View = ({ route, navigation }) => {
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+            onPress={() => navigation.goBack()}  >
             <Icon name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
           <View style={styles.headerTextSection}>

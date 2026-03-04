@@ -5,9 +5,7 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import Feather from 'react-native-vector-icons/Feather';
 import Entypo from 'react-native-vector-icons/Entypo';
 import   MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import Fontisto from 'react-native-vector-icons/Fontisto';
-
-
+import Fontisto from 'react-native-vector-icons/Fontisto';  
 const IconManager = (props) => {
   const { icon, color, size, iconClass ,style} = props;
 

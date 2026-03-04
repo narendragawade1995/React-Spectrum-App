@@ -214,7 +214,7 @@ const AccountDetails = ({ navigation }) => {
       )}
     /> */}
                           {agentDetails.map((agent, index) => (
-        <AgentCard key={agent.id} agent={agent} index={index} />
+        <AgentCard key={agent.index} agent={agent} index={index} />
       ))}
     </View>
 

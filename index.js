@@ -11,7 +11,32 @@ import Store from './src/Redux/Store/store';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { COLORS } from './src/theme/theme';
 import AppStateListner from './src/Components/AppStateListner';
+import BackgroundFetch from 'react-native-background-fetch';
+import BackgroundLocationTask from './src/services/BackgroundLocationTask';
 
+
+const HeadlessTask = async (event) => {
+  const taskId = event.taskId;
+  const isTimeout = event.timeout;
+
+  console.log('[HeadlessTask] Fired. TaskId:', taskId, '| Timeout:', isTimeout);
+
+  if (isTimeout) {
+    console.warn('[HeadlessTask] Task timed out. Finishing.');
+    BackgroundFetch.finish(taskId);
+    return;
+  }
+
+  try {
+    // Use require() here, NOT import — safe in headless context
+    const { runBackgroundLocationTask } = require('./src/services/locationService_old');
+    await runBackgroundLocationTask();
+  } catch (err) {
+    console.error('[HeadlessTask] Error:', err.message);
+  }
+
+  BackgroundFetch.finish(taskId); // ✅ Always call this
+};
 export default function Main() {
   const theme = {
     ...DefaultTheme,
@@ -60,6 +85,9 @@ export default function Main() {
     }
 
   }
+
+  
+
   return (
     <>
       <AppStateListner />
@@ -75,3 +103,4 @@ export default function Main() {
 }
 
 AppRegistry.registerComponent(appName, () => Main);
+BackgroundFetch.registerHeadlessTask(BackgroundLocationTask);

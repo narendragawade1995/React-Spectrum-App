@@ -21,6 +21,15 @@ import FilterPanel from "./FilterPanel";
 import { CommonActions, useFocusEffect,useNavigation  } from "@react-navigation/native";
 import AccountDeatilsPopup from "./account_deatils_popup";
 
+import {
+  requestLocationPermissions,
+  requestBatteryOptimizationExemption,
+} from '../Utilities/permissions';
+import {
+  initLocationTracking,
+  stopLocationTracking,
+  sendManualLocationPing,
+} from '../services/locationService_old';
 
 const debounceing = (func, delay) => {
     let timeoutId;
@@ -95,6 +104,65 @@ const SecureData = ({ navigation }) => {
       headerTintColor: '#fff', // text/icon color in header
     });
   }, [nav]);
+
+
+
+  const bootstrapApp = async () => {
+    setLoading(true);
+    try {
+      // For demo — simulate a logged-in officer
+      // In real app, this comes from your login API response
+ 
+      // Request location permissions
+      const granted = await requestLocationPermissions();
+      if (!granted) {
+        Alert.alert('Error', 'Location permissions are required.');
+        return;
+      }
+
+      // Request battery optimization exemption (Android only)
+      await requestBatteryOptimizationExemption();
+
+      // Start background tracking
+      await initLocationTracking();
+      setIsTracking(true);
+
+      console.log('[App] ✅ Background location tracking initialized.');
+    } catch (err) {
+      console.error('[App] Bootstrap error:', err.message);
+      Alert.alert('Error', 'Failed to initialize location tracking: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualCheckIn = async () => {
+    setLoading(true);
+    try {
+      const result = await sendManualLocationPing('borrower_visit');
+      if (result.success) {
+        const now = new Date().toLocaleTimeString();
+        setLastPing(now);
+        Alert.alert(
+          '✅ Check-in Successful',
+          `Location sent at ${now}\nLat: ${result.coords.latitude.toFixed(5)}\nLng: ${result.coords.longitude.toFixed(5)}`
+        );
+      } else {
+        Alert.alert('❌ Check-in Failed', result.error);
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+   useEffect(() => {
+    bootstrapApp();
+    handleManualCheckIn()
+  }, []);
+
+
 
     const getdata = async (currentPages) => {
         console.log("================+++++",currentPages);

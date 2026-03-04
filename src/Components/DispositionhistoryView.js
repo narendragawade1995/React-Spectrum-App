@@ -3,7 +3,6 @@ import { Animated, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } fr
 import { Card, Divider, Modal, Portal, Text } from "react-native-paper";
 import IconManager from "../Utilities/IconManager";
 import { COLORS } from "../theme/theme";
-
 const DispositionHistoryView = ({ info, navigation, togleinfoCard,secure })=>{
     const [modelvisible, setModelvisibility] = useState(info.openInfocard);
     const translateY = useRef(new Animated.Value(1000)).current;

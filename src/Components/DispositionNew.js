@@ -38,7 +38,6 @@ const nature = [
     }
 ]
 
-
 const DispositionNew = (props) => {
     const [selectedOption, setSelectedOption] = useState('');
     const [formFields, setFormFields] = useState([]);
