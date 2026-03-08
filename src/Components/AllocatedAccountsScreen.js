@@ -23,8 +23,7 @@ import {
   Dimensions,
   Animated,
   BackHandler,
-  Alert,
-  StatusBar,
+   StatusBar,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

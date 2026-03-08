@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { COLORS } from '../theme/theme';
-import  api from '../Utilities/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -142,14 +142,13 @@ export default function SplashScreen({ navigation }) {
 
     // Navigate
     const timer = setTimeout(async () => {
-      const token =   api.getItem('authtoken');
+        const token = await AsyncStorage.getItem('authtoken');
       console.log("Token in splash screen:", token);
       if (token) {
         navigation?.replace('Home');
       } else {
         navigation?.replace('Login');
       };
-      navigation?.replace('Login');
     }, 3200);
 
     return () => clearTimeout(timer);

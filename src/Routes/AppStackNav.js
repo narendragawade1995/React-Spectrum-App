@@ -44,6 +44,10 @@ import AllocatedAccountsScreenWithTracking from '../Components/AllocatedAccounts
 import CustomerAddressDetails from '../Components/AddressNew';
 import DispositionHistoryScreen from '../Components/DispositionHistoryScreen';
 import SplashScreen from '../Components/SplashScreen';
+import PaymentReceiptScreen from '../Components/Payment Receipt/PaymentReceiptScreen';
+import InitiateValuationScreen from '../Components/InitiateValuationScreen';
+import InitiateValuationFinalScreen from '../Components/InitiateValuationScreenFinal';
+
 
 const AppStackNav = ()=>{
     const Stack =  createNativeStackNavigator();
@@ -78,13 +82,17 @@ const AppStackNav = ()=>{
         { name: 'Auth', label:'Account Search',component: AuthComponent },
         { name: 'Unsecure', label:'Unsecure',component: Borrowerdetails },
         { name: 'Disposirion', label:'UnsecureDisposition',component: Usecuredisposition },
-        { name: 'dishistory', label:'Disposition History',component: DispositionHistoryScreen }
+        { name: 'dishistory', label:'Disposition History',component: DispositionHistoryScreen },
+        { name: 'PaymentReceipt', label:'Payment Receipt',component: PaymentReceiptScreen },
+        { name: 'Valuation', label:'Valuation',component: InitiateValuationFinalScreen },
+
+
 
         // { name: 'Notification', label:'',component: Notification },
         // Add more screens as needed
       ];
     return (
-        <Stack.Navigator initialRouteName='Auth'  screenOptions={styles.headeroptions}>
+        <Stack.Navigator initialRouteName='splash'  screenOptions={styles.headeroptions}>
                  {
                     screens.map((itm,index)=>(
                         <Stack.Screen key={index + itm} name={itm.name}  component={itm.component} options={{headerLeft:()=>{

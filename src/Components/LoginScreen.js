@@ -303,6 +303,8 @@ export default function LoginForm() {
                     underlineColor="transparent"
                     activeUnderlineColor="transparent"
                     mode="flat"
+                    selectionColor={COLORS.primary}
+                    cursorColor={COLORS.primary}
                   />
                 </View>
               )}
