@@ -47,6 +47,17 @@ import SplashScreen from '../Components/SplashScreen';
 import PaymentReceiptScreen from '../Components/Payment Receipt/PaymentReceiptScreen';
 import InitiateValuationScreen from '../Components/InitiateValuationScreen';
 import InitiateValuationFinalScreen from '../Components/InitiateValuationScreenFinal';
+import DispositionNewPreview from '../Components/Secure/DispositionNew';
+import UnsecuredDispositionNew from '../Components/unsecure/UnsecuredDisposition';
+import DispositionHistoryScreenNew from '../Components/DispositionHistoryScreenNew';
+import AllocatedAccountsScreenWithTracking_New from '../Components/unsecure/BorrowerdeatilsNew';
+import DispositionHistoryScreenUnsecured from '../Components/unsecure/DispositionHistoryScreen';
+import DispositionDetailScreen from '../Components/unsecure/DispositionDetailScreen';
+import Account360NewPreview from '../Components/Account360NewPreview';
+import Account360NewPreviewNew from '../Components/Account360NewPreviewNew';
+import CustomerListScreenNew from '../Components/CustomerListScreenNew';
+import Account360PreviewNew from '../Components/Account360PreviewNew';
+import AccountDetailsScreenNew from '../Components/AccountDetailsScreenNew';
 
 
 const AppStackNav = ()=>{
@@ -68,26 +79,25 @@ const AppStackNav = ()=>{
         { name: 'AddAddress', label:'Add Address',component: CustomerAddressForm },
         { name: 'AddContact', label:'Add Contact',component: CustomerAddContact },
         { name: 'Contacts', label:'Contacts',component: CustomerContactDetails },
-        { name: 'AccDetails', label:'Account Details',component: AccountDetailsScreen },
-        { name: 'Account360', label:'360 View',component: Account360New },
+        { name: 'AccDetails', label:'Account Details',component: AccountDetailsScreenNew },
+        { name: 'Account360', label:'360 View',component: Account360NewPreviewNew },
         { name: 'FutuCom', label:' ',component: FutureComp },
         { name: 'Address', label:'Customer Address',component: CustomerAddressDetails },
         { name: 'Contact', label:'Contact',component: CustomerContactDetails },
         { name: 'Liveliness', label:'Liveliness',component: LivelinessNew },
-        { name: 'CustomerList', label:'Customer List',component: CustomerListScreen },
+        { name: 'CustomerList', label:'Customer List',component: CustomerListScreenNew },
         { name: 'Resolution', label:'Resolution Recommendation',component: ResolutionNew },
         { name: 'todolist', label:'To-Do List',component: Todolist },
-        { name: 'DispositionNew', label:'Disposition',component:  DispositionNew },
+        { name: 'DispositionNew', label:'Disposition',component:  DispositionNewPreview },
         { name: 'accountsearch', label:'Account Search',component: AccountSearch },
         { name: 'Auth', label:'Account Search',component: AuthComponent },
-        { name: 'Unsecure', label:'Unsecure',component: Borrowerdetails },
-        { name: 'Disposirion', label:'UnsecureDisposition',component: Usecuredisposition },
-        { name: 'dishistory', label:'Disposition History',component: DispositionHistoryScreen },
+        { name: 'Unsecure', label:'Unsecure',component: AllocatedAccountsScreenWithTracking_New },
+        { name: 'Disposirion', label:'UnsecureDisposition',component: UnsecuredDispositionNew },
+        { name: 'dishistory', label:'Disposition History',component: DispositionHistoryScreenNew },
         { name: 'PaymentReceipt', label:'Payment Receipt',component: PaymentReceiptScreen },
         { name: 'Valuation', label:'Valuation',component: InitiateValuationFinalScreen },
-
-
-
+        { name :'Unsecure_disposition_history', label:"Disposition History", component: DispositionHistoryScreenUnsecured },
+        { name : "DispositionDetail", label:"DispositionDetail", component:DispositionDetailScreen}
         // { name: 'Notification', label:'',component: Notification },
         // Add more screens as needed
       ];

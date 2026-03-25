@@ -44,13 +44,14 @@ const Api = {
     },
     send: async (payload, url) => {
         try {
+            console.log(await getHeaders(), "=================== tokeen");
             let response = await fetch(`${baseUrl}/${url}`, {
                 method: 'POST',
                 headers: await getHeaders(),
                 body: JSON.stringify(payload),
             });
 
-            console.log({ url, response })
+            console.log({ url, response:JSON.stringify(response) })
             if (!response.ok) {
                 Api.clearStorage('userdetail').then(() => {
                     cusnavigate('Login', []);

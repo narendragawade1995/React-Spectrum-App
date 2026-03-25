@@ -1,1033 +1,1125 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity,
+    ScrollView, Alert, Modal, Platform
+} from 'react-native';
 import { COLORS } from '../theme/theme';
 import { TextInput, Snackbar, Card, IconButton } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Dropdown } from 'react-native-paper-dropdown';
-import Api from "../Utilities/apiService"
+import Api from '../Utilities/apiService';
 import Loader from './Loader';
 import ImagePicker from 'react-native-image-crop-picker';
-import { getFileNameAndExtension } from '../Utilities/CommonFun'
+import { getFileNameAndExtension } from '../Utilities/CommonFun';
 import IconManager from '../Utilities/IconManager';
 
-
-const type = [
-    {
-        label: 'Field Visit',
-        value: 'Field Visit',
-    },
-    {
-        label: 'Call',
-        value: 'Call',
-    },
-    {
-        label: 'Site Visit',
-        value: 'Site Visit',
-    }
+// ─── Static option lists ────────────────────────────────────────────────────
+const TYPE_OPTIONS = [
+    { label: 'Field Visit', value: 'Field Visit' },
+    { label: 'Call',        value: 'Call'        },
+    { label: 'Site Visit',  value: 'Site Visit'  },
 ];
 
+const NATURE_OPTIONS = [
+    { label: 'Call',  value: 'Call'  },
+    { label: 'Visit', value: 'Visit' },
+];
 
-const nature = [
-    {
-        label: 'Call',
-        value: 'Call',
-    },
-    {
-        label: 'Visit',
-        value: 'Visit',
-    }
-]
-
+// ─── Main Component ──────────────────────────────────────────────────────────
 const DispositionNew = (props) => {
-    const [selectedOption, setSelectedOption] = useState('');
-    const [formFields, setFormFields] = useState([]);
-    const [formFieldscopy, setFormFieldscopy] = useState([]);
-    const [date, setDate] = useState(new Date());
-    const [label, setlabel] = useState('');
-    const [dropDownState, setDropDownState] = useState({});
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [errors, setErrors] = useState({});
 
-    const [dropdowndata, setDropdowndata] = useState({});
-    const [contact, setContact] = useState([]);
-    const [adress, setAdress] = useState([]);
-    const [dispositionCount, setDispositionCount] = useState(null);
-    const [customerList, setcustomerList] = useState([]);
-    const [customerListCopy, setcustomerListCopy] = useState([]);
+    // ── Form / dropdown state ──────────────────────────────────────────────
+    const [dropDownState, setDropDownState]         = useState({});
+    const [errors, setErrors]                       = useState({});
+    const [formFields, setFormFields]               = useState([]);      // rendered dynamic fields
+    const [formFieldsCopy, setFormFieldsCopy]       = useState([]);      // original copy for type-filter
 
-    const [acoountdetails, setAcoountdetails] = useState({});
-    const [loader, setLoader] = useState(false);
-    const [visibleSnackbar, setVisibleSnackbar] = useState(false);
-    const [dispositiondata, setdispositiondata] = useState({ selected_image: [] });
-    const [message, setMessage] = useState('');
-    const [typeOption, setTypeOption] = useState(type);
-    const [location, setLocation] = useState({ lattitude: null, longitude: null });
-    const [currentdate, setCurrentdate] = useState(null);
-    const [shoowtimer, setShoowtimer] = useState(false);
-    const [predateValue, setPredateValue] = useState(new Date());
-    const [previousdate, setPreviousdate] = useState(false);
-    const [previousdatetime, setPreviousdatetime] = useState(false);
+    // ── API data ───────────────────────────────────────────────────────────
+    const [dropdownApiData, setDropdownApiData]         = useState({});
+    const [dispositionMaster, setDispositionMaster]     = useState([]);  // filtered list shown in dropdown
+    const [dispositionMasterCopy, setDispositionMasterCopy] = useState([]); // unfiltered full list from API
+    const [contact, setContact]                         = useState([]);
+    const [address, setAddress]                         = useState([]);
+    const [dispositionCount, setDispositionCount]       = useState(null);
+    const [customerList, setCustomerList]               = useState([]);
+    const [customerListCopy, setCustomerListCopy]       = useState([]);
+    const [accountDetails, setAccountDetails]           = useState({});
+    const [userData, setUserData]                       = useState(null);
 
+    // ── UI state ───────────────────────────────────────────────────────────
+    const [loader, setLoader]                       = useState(false);
+    const [visibleSnackbar, setVisibleSnackbar]     = useState(false);
+    const [message, setMessage]                     = useState('');
+    const [outsideHours, setOutsideHours]           = useState(false);
+    const [currentDate, setCurrentDate]             = useState(null);
 
+    // ── Date / time pickers ─────────────────────────────────────────────────
+    const [showDatePicker, setShowDatePicker]       = useState(false);
+    const [datePickerLabel, setDatePickerLabel]     = useState('');
+    const [date, setDate]                           = useState(new Date());
 
+    // ── Activity-time picker (outside-hours "No" flow) ──────────────────────
+    const [showActivityModal, setShowActivityModal] = useState(false);
+    const [activityPickerStep, setActivityPickerStep] = useState('date'); // 'date' | 'time'
+    const [activityDateValue, setActivityDateValue] = useState(new Date());
+    const activityTimeRef = useRef(null); // stores final Date after modal
 
+    // ── Image upload ────────────────────────────────────────────────────────
+    const [dispositionData, setDispositionData]     = useState({ selected_image: [] });
 
+    // ── GPS ────────────────────────────────────────────────────────────────
+    const [location, setLocation]                   = useState({ lattitude: null, longitude: null });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        const init = async () => {
+            const params = props.route.params;
+            setAccountDetails(params);
+            setDropDownState(prev => ({ ...prev, account_number: params.account_no }));
+            getLocation();
+            await fetchAllData(params);
+        };
+        init();
+    }, []);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // GPS  (mirrors Angular's getLocation)
+    // ═══════════════════════════════════════════════════════════════════════
     const getLocation = () => {
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                setLocation({ latitude, longitude });
-                console.log("lattitude: ", latitude, "longitude: ", longitude);
+            ({ coords: { latitude, longitude } }) => {
+                setLocation({ lattitude: latitude, longitude: longitude });
             },
-            (error) => {
-                console.log(error.code, error.message);
-            },
+            (err) => console.log('Location error:', err.message),
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
     };
 
-    const fetchData = async () => {
-        const selectedOption = props.route.params.account_no;
-        console.log('props.route.params', props.route.params);
-        setAcoountdetails(props.route.params)
-        console.log(selectedOption);
-        setSelectedOption(selectedOption);
-        handleDropDownChange('account_number', selectedOption);
-        fetchAllData();
-        getLocation();
-        // dropDown();
-        // getDispositionCount();
-        // getAddress();
-        // getContacts();
-        // getCustomerList();
-
-    }
-
-
-    useEffect(() => {
-        fetchData();
-        // return () => {
-        //     setDropDownState({});
-        // };
-    }, []);
-
-    const handleSelectionChange = (value) => {
-        console.log(value);
-        let prevoiusdata = {
-            account_number: dropDownState.account_number,
-            type: dropDownState.type,
-            nature: dropDownState.nature
-
-        }
-        setDropDownState(prevoiusdata);
-        // setSelectedOption(value);
-        handleDropDownChange('disposition', value);
-        let selectDisposition = [];
-        if (value) {
-            console.log('handleSelectionChange', dropdowndata)
-            selectDisposition = dropdowndata?.dropdownValue?.filter(ele => ele.input_type === value);
-            console.log("selectDisposition------------------------------", selectDisposition);
-            if (selectDisposition && selectDisposition.length) {
-                if (typeof selectDisposition[0].drop_down_value === 'string') {
-                    selectDisposition[0].drop_down_value = JSON.parse(selectDisposition[0].drop_down_value);
-
-                    console.log(`*******************************************************selectDisposition afte`, selectDisposition);
-                    console.log(selectDisposition);
-                    const index = selectDisposition[0].drop_down_value.findIndex(obj => obj.formControl_name === 'person_contacted');
-                    console.log(`*******************************************************`);
-                    console.log(index);
-                    console.log(selectDisposition);
-                    const name = {
-                        dropdowndata: [],
-                        formControl_name: 'person_contacted_name',
-                        label: 'Name',
-                        //  rules: {required: true},
-                        s_type: "both",
-                        type: "dropdown",
-                        validation_msg: [{ text: 'Please select name', type: 'required' }]
-                    }
-
-                    selectDisposition[0].drop_down_value.splice(index + 1, 0, name);
-                }
-
-                console.log(selectDisposition);
-                const sortedFormFields = [...selectDisposition[0].drop_down_value].sort((a, b) => {
-                    if (a.label === "Sub Disposition *") return -1;
-                    if (b.label === "Sub Disposition *") return 1;
-                    return 0;
-                });
-
-                setFormFieldscopy(sortedFormFields)
-                setDisposition(sortedFormFields, value == 'Site Visit' ? 'Site Visit' : null);
-                handleDropDownChange('disposition_id', selectDisposition[0]?.id);
-            }
-        } else {
-            setFormFields([]);
-        }
-    };
-
-    const setDisposition = (formdata = [], type) => {
-        console.log('*********************', dropDownState?.type)
-        const ctype = type || dropDownState?.type
-        const final = formdata.filter(ele => ele.s_type === 'both' || ele.s_type === ctype);
-        // setFormFields(final);
-        setFormFields((prevState) => [
-            ...final
-        ]);
-
-        console.log(formFields)
-    }
-
-    const onDateClick = (label) => {
-        setlabel(label);
-        setShowDatePicker(true);
-    }
-
-    const getsubdisposition = (disposition) => {
-        const selectDisposition = dropdowndata?.dropdownValue?.filter(ele => ele.input_type === disposition);
-        console.log("selectDisposition+++++++++++++56");
-        //  console.log(selectDisposition);
-        // "sub_sub_disposition"
-        if (selectDisposition && selectDisposition.length) {
-            const selecteddropdown = JSON.parse(selectDisposition[0].drop_down_value);
-            const subdisposition = selecteddropdown.filter(ele => ele.formControl_name == 'reason');
-            console.log('reason subdisposition', 'subdisposition', subdisposition[0].dropdowndata);
-            const formfilter = formFields;
-            formfilter.forEach(ele => {
-                if (ele.formControl_name == 'sub_sub_disposition') {
-                    ele.dropdowndata = subdisposition[0].dropdowndata;
-                }
-            });
-            setFormFields(formfilter)
-        }
-    }
-
-
-    const onChangeActivity = ({ type }, selectedDate, formControlName, format = 'date') => {
-        console.log(type, selectedDate)
-        if (formControlName === 'activity_date') {
-            setPreviousdate(false);
-            setPreviousdatetime(true);
-        } else {
-            setShowtimer(false);
-        }
-
-        if (type === 'set') {
-            const formattedDate = formatDate(new Date(selectedDate), format);
-            const selectedHour = new Date(selectedDate).getHours();
-            if (selectedHour < 8 || selectedHour >= 19) {
-                Alert.alert("Invalid Time", "Please select a time between 8 AM and 7 PM.");
-                setPreviousdate(false);
-                setPreviousdatetime(false);
-                setShowtimer(false);
-                return;
-
-            }
-
-
-
-            if (format === 'datetime') {
-                const formattedTime = formatDate(new Date(selectedDate), 'time');
-                handleDropDownChange(formControlName, formattedTime);
-                handleDropDownChange('activity_date', formattedDate);
-            } else {
-                handleDropDownChange(formControlName, formattedDate);
-            }
-        }
-
-        if (formControlName === 'activity_time') {
-            setPreviousdate(false);
-            setPreviousdatetime(false);
-            setShowtimer(false);
-            handleSave();
-
-        }
-    }
-
-
-
-    const onChange = ({ type }, selectedDate, formcontrolname, format = 'date') => {
-        if (type == 'set') {
-            // const currentDate = selectedDate;
-            // setDate(currentDate); 
-            setlabel('');
-            const currentDate = formatDate(new Date(selectedDate), format);
-            console.log("%%%%%%%%%%%%%%%%%%%%%%,", selectedDate, formcontrolname);
-            handleDropDownChange(formcontrolname, currentDate);
-            console.log(dropDownState);
-        }
-        setShowDatePicker(false);
-    };
-
-    const OndateSelected = ({ type }, selectedDate) => {
-        setShowDatePicker(false);
-        setDate(selectedDate)
-        setlabel('');
-        if (type == 'set') {
-            const currentDate = formatDate(new Date(selectedDate), 'datewithtime');
-            handleDropDownChange('followup_date', currentDate)
-            if (Platform.OS === 'android') {
-            }
-        }
-    }
-
-
-    const handleDropDownChange = (formControlName, value) => {
-        console.log(formControlName, value);
-        // setDropDownState({
-        //     ...dropDownState,
-        //     [formControlName]: value,
-        // });
-        setDropDownState((prevState) => ({
-            ...prevState,
-            [formControlName]: value
-        }),);
-
-        console.log(dropDownState)
-        setErrors((prevState) => ({
-            ...prevState,
-            [formControlName]: ''
-        }));
-
-        if (formControlName === 'type' && value != 'Site Visit') {
-            setDisposition(formFieldscopy, value);
-        }
-        if (formControlName === 'type' && value === 'Site Visit') {
-            handleSelectionChange('Site Visit');
-        }
-        if (formControlName === 'reason' && dropDownState.disposition === 'Welcome Call') {
-            getsubdisposition(value);
-        }
-
-        if (formControlName === 'person_contacted') {
-            let btype;
-            if (value == 'Borrower') {
-                btype = 'Applicant';
-            } else if (value == 'Co-borrower') {
-                btype = 'Co-Applicant';
-            } else {
-                btype = value;
-            }
-            let customerlistc = customerListCopy.filter(ele => ele['Borrower Type'] == btype);
-            console.log("customerlistc,value", customerlistc, value, customerListCopy)
-            setcustomerList(customerlistc)
-        }
-    };
-
-
-    const validateFields = () => {
-        const newErrors = {};
-        console.log(newErrors);
-        formFields.forEach(field => {
-            if (field?.rules?.required && !dropDownState[field.formControl_name]) {
-                newErrors[field.formControl_name] = field?.validation_msg[0]?.text;
-            }
-            if (dropDownState[field.formControl_name] && field?.rules?.pattern && !new RegExp(field.rules.pattern).test(dropDownState[field.formControl_name])) {
-                newErrors[field.formControl_name] = field?.validation_msg?.find(msg => msg.type === 'pattern')?.text;
-            }
-
-            // Check for minlength validation
-            if (dropDownState[field.formControl_name] && field?.rules?.MinLength && dropDownState[field.formControl_name]?.length < field.rules.MinLength) {
-                newErrors[field.formControl_name] = field?.validation_msg?.find(msg => msg.type === 'minlength')?.text;
-            }
-
-            // Check for maxlength validation
-            if (dropDownState[field.formControl_name] && field?.rules?.MaxLength && dropDownState[field.formControl_name]?.length > field.rules.MaxLength) {
-                newErrors[field.formControl_name] = field?.validation_msg?.find(msg => msg.type === 'maxlength')?.text;
-            }
-        });
-
-        if (!dropDownState.type) {
-            newErrors.type = 'Please select Type';
-        }
-
-        if (!dropDownState.nature && dropDownState.type == 'Field Visit') {
-            newErrors.nature = 'Please select Nature';
-        }
-
-        if (!dropDownState.disposition) {
-            newErrors.disposition = 'Please select Disposition';
-        }
-
-        if (!dropDownState.followup_date) {
-            newErrors.followup_date = 'Please select Followup Date';
-        }
-        if (!dropDownState.remarks) {
-            newErrors.remarks = 'Please select Remarks';
-        }
-
-        setErrors(newErrors);
-        console.log(newErrors)
-        return Object.keys(newErrors).length === 0;  // Returns true if no errors
-    };
-
-
-    // const getDispositionCount = async () => {
-    //     try {
-    //         const DispositionCount = await Api.send({ account_number: props.route.params.account_no }, 'diposition/getdisposition_count');
-    //         setDispositionCount(DispositionCount.count)
-    //     } catch (error) {
-
-    //     }
-    // }
-
-
-    // const dropDown = async () => {
-    //     try {
-    //         const dropdowndata = await Api.get('/diposition/dropdowndata');
-    //         dropdowndata.disposition_masterfilter = dropdowndata.disposition_master;
-    //         setDropdowndata(dropdowndata);
-    //     } catch (error) {
-
-    //     }
-    // }
-
-
-    // const getContacts = async () => {
-    //     try {
-    //         const isPhoneNumber = (str) => /^\d{10}$/.test(str);
-    //         const contactlist = await Api.get(`diposition/phonenumber?account_id=${props.route.params.account_id}`);
-    //         let filteredContacts  = contactlist.filter(item => isPhoneNumber(item.cont_number));
-    //         setContact(filteredContacts);
-    //     } catch (error) {
-
-    //     }
-    // }
-
-    // const getAddress = async () => {
-    //     try {
-    //         const address = await Api.get(`diposition/addressDetails?account_id=${props.route.params.account_id}&disposition=${dropDownState.disposition}`);
-    //         setAdress(address);
-    //     } catch (error) {
-
-    //     }
-    // }
-
-    // const getCustomerList = async () => {
-    //     try {
-    //         const CustomerList2 = await Api.send({ account_no: props.route.params.account_no }, 'secure_borrowerdetails/getcustomerList');
-    //         setcustomerList(CustomerList2);
-    //         console.log('CustomerList', CustomerList2);
-    //     } catch (error) {
-
-    //     }
-    // }
-
-    const fetchAllData = async () => {
+    // ═══════════════════════════════════════════════════════════════════════
+    // FETCH ALL DATA  (mirrors Angular's integration() + forkJoin)
+    // ═══════════════════════════════════════════════════════════════════════
+    const fetchAllData = async (params) => {
         try {
             setLoader(true);
-            // Destructure the necessary parameters from props.route.params
-            const { account_no, account_id } = props.route.params;
+            const { account_no, account_id } = params;
 
-            // Run all API calls in parallel
             const [
-                dispositionCountResponse,
-                dropdowndataResponse,
-                contactlistResponse,
-                addressResponse,
-                customerListResponse
+                countRes,
+                dropdownRes,
+                contactsRes,
+                addressRes,
+                customerListRes,
+                userDataRes,
             ] = await Promise.all([
                 Api.send({ account_number: account_no }, 'diposition/getdisposition_count'),
                 Api.get('/diposition/dropdowndata'),
                 Api.get(`diposition/phonenumber?account_id=${account_id}`),
-                Api.get(`diposition/addressDetails?account_id=${account_id}&disposition=${dropDownState.disposition}`),
-                Api.send({ account_no }, 'secure_borrowerdetails/getcustomerList')
+                Api.get(`diposition/addressDetails?account_id=${account_id}&disposition=`),
+                Api.send({ account_no }, 'secure_borrowerdetails/getcustomerList'),
+                Api.get('user/userdetails').catch(() => null),
             ]);
+
+            const count = countRes?.count ?? 0;
+            setDispositionCount(count);
+
+            // Current server date → detect outside office hours (mirrors Angular integration callback)
+            const serverDate = new Date(dropdownRes.date);
+            setCurrentDate(serverDate);
+            const hour = serverDate.getHours();
+            if (hour < 8 || hour >= 19) setOutsideHours(true);
+
+            // Store user data for user_type based filtering
+            const udata = userDataRes?.ResponseMessage?.userDetails?.[0] ?? null;
+            setUserData(udata);
+
+            // Keep full disposition master copy
+            const fullMaster = dropdownRes.disposition_master ?? [];
+            setDispositionMasterCopy(fullMaster);
+
+            // Apply initial type-based filter (mirrors setdispositiondropdown)
+            // Will be refined when user selects a type; here we just store raw.
+            applyUserTypeFilter(fullMaster, udata);
+
+            // Parse dropdownValue JSON strings
+            (dropdownRes.dropdownValue ?? []).forEach(ele => {
+                if (typeof ele.drop_down_value === 'string') {
+                    ele.drop_down_value = JSON.parse(ele.drop_down_value);
+                }
+            });
+            setDropdownApiData(dropdownRes);
+
+            // Contacts – only valid 10-digit numbers
+            const isPhone = (s) => /^\d{10}$/.test(s);
+            setContact((contactsRes ?? []).filter(i => isPhone(i.cont_number)));
+
+            setAddress(addressRes ?? []);
+            setCustomerListCopy(customerListRes ?? []);
+
+        } catch (err) {
+            showSnackbar('Error fetching data. Please try again.');
+            console.error('fetchAllData error:', err);
+        } finally {
             setLoader(false);
-            setCurrentdate(dropdowndataResponse.date)
-            // Set states with the respective responses
-            setDispositionCount(dispositionCountResponse.count);
-            console.log("dispositionCountResponse.count", dispositionCountResponse.count);
-
-
-            // Manipulate and set the dropdown data
-            if (dispositionCountResponse.count) {
-                dropdowndataResponse.disposition_masterfilter = dropdowndataResponse.disposition_master.filter(
-                    ele => ele.disposition_name !== 'Site Visit' && ele.disposition_name !== 'Welcome Call'
-                );
-                // dropdowndataResponse.disposition_master = dropdowndataResponse.disposition_masterfilter;
-
-            } else {
-                dropdowndataResponse.disposition_masterfilter = dropdowndataResponse.disposition_master.filter(ele => ele.disposition_name === 'Welcome Call');
-                // dropdowndataResponse.disposition_master = dropdowndataResponse.disposition_masterfilter;
-
-            }
-
-            console.log('disposition_masterfilter', dropdowndataResponse.disposition_masterfilter, dropdowndataResponse.disposition_master);
-            setDropdowndata(dropdowndataResponse);
-            const isPhoneNumber = (str) => /^\d{10}$/.test(str);
-            const filteredContacts = contactlistResponse.filter(item => isPhoneNumber(item.cont_number));
-            setContact(filteredContacts);
-            setAdress(addressResponse);
-            // setcustomerList(customerListResponse);
-            setcustomerListCopy(customerListResponse);
-
-        } catch (error) {
-            setLoader(false);
-            setVisibleSnackbar(true);
-            setMessage('Error fetching data:');
-            console.error('Error fetching data:', error);
-
         }
     };
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // USER-TYPE FILTER  (mirrors Angular's setdispositiondropdown)
+    // ═══════════════════════════════════════════════════════════════════════
+    const applyUserTypeFilter = (masterList, udata) => {
+        if (!masterList?.length) return;
+        let filtered = masterList;
+        const userType = udata?.user_type;
+        if (userType === 'Fos') {
+            filtered = masterList.filter(d => d.type === 'Field Visit');
+        } else if (userType === 'Telecaller') {
+            filtered = masterList.filter(d => d.type === 'Call');
+        }
+        // Internal / undefined → all types allowed; filtering happens on type select
+        setDispositionMaster(filtered);
+    };
 
-    const validation = () => {
-        setPreviousdate(false);
-        console.log('Dropdown State:', dropDownState);
-        if (!validateFields()) {
-            console.warn('Form has validation errors. API call aborted.');
-            return;
-        };
-        const currentDate2 = currentdate ? new Date(currentdate) : new Date();
-        const currentHour = currentDate2.getHours();
-        if (currentHour < 8 || currentHour >= 19) {
-            const aftermessage = currentHour >= 19 ? 'Post 7 p.m ?' : "before 8 a.m.?";
-            if (currentHour < 8) {
-                const previousDate = new Date(currentDate2);
-                previousDate.setDate(currentDate2.getDate() - 1); // Set to previous day
-                setPredateValue(previousDate);
-                setPreviousdate(true);
+    // ═══════════════════════════════════════════════════════════════════════
+    // TYPE SELECTION  (mirrors Angular's onselectType)
+    // ═══════════════════════════════════════════════════════════════════════
+    const onSelectType = (value) => {
+        handleDropDownChange('type', value);
+
+        // Reset disposition when type changes (unless Site Visit – auto-selects)
+        if (value !== 'Site Visit') {
+            handleDropDownChange('disposition', '');
+            setFormFields([]);
+        }
+
+        // Filter dispositionmaster by type (mirrors Angular onselectType exactly)
+        if (value === 'Call') {
+            if (!dispositionCount) {
+                // First disposition ever → include Welcome Call
+                setDispositionMaster(
+                    dispositionMasterCopy.filter(d => d.type === 'Call' || d.type === 'Field Visit, Call')
+                );
             } else {
-                setPredateValue(currentDate2); // Set to current date
+                setDispositionMaster(
+                    dispositionMasterCopy.filter(
+                        d => (d.type === 'Call' || d.type === 'Field Visit, Call') &&
+                             d.disposition_name !== 'Welcome Call'
+                    )
+                );
             }
+        } else if (value === 'Site Visit') {
+            const siteList = dispositionMasterCopy.filter(d => d.type === 'Site Visit');
+            setDispositionMaster(siteList);
+            // Auto-select first Site Visit disposition (mirrors Angular)
+            if (siteList.length) {
+                setTimeout(() => onSelectDisposition(siteList[0].disposition_name), 0);
+            }
+        } else {
+            // Field Visit
+            setDispositionMaster(
+                dispositionMasterCopy.filter(d => d.type === 'Field Visit' || d.type === 'Field Visit, Call')
+            );
+        }
+
+        // Refresh address/contacts when type changes (mirrors Angular)
+        if (accountDetails.account_id) {
+            refreshAddressForType(value);
+        }
+    };
+
+    const refreshAddressForType = async (typeValue) => {
+        try {
+            const res = await Api.get(
+                `diposition/addressDetails?account_id=${accountDetails.account_id}&disposition=${typeValue}`
+            );
+            setAddress(res ?? []);
+        } catch (e) {
+            console.log('address refresh error', e);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DISPOSITION SELECTION  (mirrors Angular's disposition() method)
+    // ═══════════════════════════════════════════════════════════════════════
+    const onSelectDisposition = (value) => {
+        if (!value) {
+            setFormFields([]);
+            return;
+        }
+
+        handleDropDownChange('disposition', value);
+
+        // Find this disposition's dynamic form config from API data
+        let selectDisposition = (dropdownApiData?.dropdownValue ?? []).filter(
+            ele => ele.input_type === value
+        );
+
+        if (!selectDisposition.length) return;
+
+        const selected = selectDisposition[0];
+        if (typeof selected.drop_down_value === 'string') {
+            selected.drop_down_value = JSON.parse(selected.drop_down_value);
+        }
+
+        // Insert person_contacted_name field right after person_contacted (mirrors Angular)
+        const personIdx = selected.drop_down_value.findIndex(
+            f => f.formControl_name === 'person_contacted'
+        );
+        if (personIdx !== -1) {
+            const nameField = {
+                dropdowndata: [],
+                formControl_name: 'person_contacted_name',
+                label: 'Name',
+                s_type: 'both',
+                type: 'dropdown',
+                validation_msg: [{ text: 'Please select name', type: 'required' }],
+            };
+            // Only insert if not already present
+            const alreadyHas = selected.drop_down_value.some(
+                f => f.formControl_name === 'person_contacted_name'
+            );
+            if (!alreadyHas) {
+                selected.drop_down_value.splice(personIdx + 1, 0, nameField);
+            }
+        }
+
+        // Sort: Sub Disposition always first (mirrors Angular sortedFormFields)
+        const sorted = [...selected.drop_down_value].sort((a, b) => {
+            if (a.label === 'Sub Disposition *') return -1;
+            if (b.label === 'Sub Disposition *') return 1;
+            return 0;
+        });
+
+        handleDropDownChange('disposition_id', selected.id ?? null);
+        setFormFieldsCopy(sorted);
+        applyTypeFilterToFormFields(sorted, value === 'Site Visit' ? 'Site Visit' : null);
+    };
+
+    // Filter dynamic form fields by currently selected type
+    const applyTypeFilterToFormFields = (fields = formFieldsCopy, overrideType = null) => {
+        const currentType = overrideType ?? dropDownState.type;
+        const filtered = fields.filter(
+            f => f.s_type === 'both' || f.s_type === currentType
+        );
+        setFormFields(filtered);
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DROPDOWN / INPUT CHANGE HANDLER
+    // ═══════════════════════════════════════════════════════════════════════
+    const handleDropDownChange = (formControlName, value) => {
+        setDropDownState(prev => ({ ...prev, [formControlName]: value }));
+        setErrors(prev => ({ ...prev, [formControlName]: '' }));
+
+        // Re-filter dynamic fields when type changes
+        if (formControlName === 'type' && value !== 'Site Visit') {
+            applyTypeFilterToFormFields(formFieldsCopy, value);
+        }
+
+        // Sub-disposition cascade (mirrors Angular checkvalidation for Welcome Call)
+        if (formControlName === 'reason' && dropDownState.disposition === 'Welcome Call') {
+            getSubDisposition(value);
+        }
+
+        // Person contacted → filter customer name list (mirrors Angular onselectpercontact)
+        if (formControlName === 'person_contacted') {
+            let btype;
+            if (value === 'Borrower')    btype = 'Applicant';
+            else if (value === 'Co-borrower') btype = 'Co-Applicant';
+            else                         btype = value;
+            setCustomerList(customerListCopy.filter(e => e['Borrower Type'] === btype));
+        }
+    };
+
+    // Update sub-sub-disposition dropdowndata (mirrors Angular getsubdisposition)
+    const getSubDisposition = (dispositionName) => {
+        const sel = (dropdownApiData?.dropdownValue ?? []).find(
+            e => e.input_type === dispositionName
+        );
+        if (!sel) return;
+        const parsed = typeof sel.drop_down_value === 'string'
+            ? JSON.parse(sel.drop_down_value) : sel.drop_down_value;
+        const subdisposition = parsed.find(e => e.formControl_name === 'reason');
+        if (!subdisposition) return;
+        setFormFields(prev => prev.map(f =>
+            f.formControl_name === 'sub_sub_disposition'
+                ? { ...f, dropdowndata: subdisposition.dropdowndata }
+                : f
+        ));
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DATE / TIME PICKERS (for regular form fields & follow-up date)
+    // ═══════════════════════════════════════════════════════════════════════
+    const openDatePicker = (label) => {
+        setDatePickerLabel(label);
+        setShowDatePicker(true);
+    };
+
+    const formatDate = (date, formatType = 'datetime') => {
+        const d  = String(date.getDate()).padStart(2, '0');
+        const m  = String(date.getMonth() + 1).padStart(2, '0');
+        const y  = date.getFullYear();
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        const ss = String(date.getSeconds()).padStart(2, '0');
+        switch (formatType) {
+            case 'datetime':   return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+            case 'time':       return `${hh}:${mm}`;
+            case 'date':       return `${y}-${m}-${d}`;
+            case 'datewithtime': return `${y}-${m}-${d} 00:00:00`;
+            default:           return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+        }
+    };
+
+    // Regular field date/time change
+    const onDateChange = ({ type }, selectedDate, formControlName, format = 'date') => {
+        if (type === 'set') {
+            setDatePickerLabel('');
+            handleDropDownChange(formControlName, formatDate(new Date(selectedDate), format));
+        }
+        setShowDatePicker(false);
+    };
+
+    // Follow-up date change
+    const onFollowUpDateChange = ({ type }, selectedDate) => {
+        setShowDatePicker(false);
+        setDate(selectedDate);
+        setDatePickerLabel('');
+        if (type === 'set') {
+            handleDropDownChange('followup_date', formatDate(new Date(selectedDate), 'datewithtime'));
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACTIVITY-TIME MODAL (outside-hours "No" → mirrors DispositionTimeComponent)
+    // User picks a date+time for the actual visit/call time
+    // ═══════════════════════════════════════════════════════════════════════
+    const openActivityTimePicker = () => {
+        const serverDate = currentDate ? new Date(currentDate) : new Date();
+        const hour = serverDate.getHours();
+        // Before 8 AM: user may have called previous day → start with date picker
+        // After 7 PM : same day is fine → start with time picker
+        if (hour < 8) {
+            const prevDay = new Date(serverDate);
+            prevDay.setDate(serverDate.getDate() - 1);
+            setActivityDateValue(prevDay);
+            setActivityPickerStep('date');
+        } else {
+            setActivityDateValue(serverDate);
+            setActivityPickerStep('time');
+        }
+        setShowActivityModal(true);
+    };
+
+    const onActivityDateChange = ({ type }, selectedDate) => {
+        if (type === 'set' && selectedDate) {
+            setActivityDateValue(selectedDate);
+            setActivityPickerStep('time'); // move to time picker
+        } else {
+            setShowActivityModal(false);
+        }
+    };
+
+    const onActivityTimeChange = ({ type }, selectedDate) => {
+        if (type === 'set' && selectedDate) {
+            // Combine chosen date + chosen time into one Date object
+            const combined = new Date(activityDateValue);
+            combined.setHours(selectedDate.getHours());
+            combined.setMinutes(selectedDate.getMinutes());
+            combined.setSeconds(selectedDate.getSeconds());
+            activityTimeRef.current = combined;
+            setShowActivityModal(false);
+            handleSave(combined); // pass activity_time directly (avoids async state lag)
+        } else {
+            setShowActivityModal(false);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // VALIDATION  (mirrors Angular's validateFields + ValidationError)
+    // ═══════════════════════════════════════════════════════════════════════
+    const validateFields = () => {
+        const newErrors = {};
+
+        // Dynamic fields
+        formFields.forEach(field => {
+            if (field?.rules?.required && !dropDownState[field.formControl_name]) {
+                newErrors[field.formControl_name] = field?.validation_msg?.[0]?.text || `${field.label} is required`;
+            }
+            if (dropDownState[field.formControl_name] && field?.rules?.pattern &&
+                !new RegExp(field.rules.pattern).test(dropDownState[field.formControl_name])) {
+                newErrors[field.formControl_name] =
+                    field?.validation_msg?.find(m => m.type === 'pattern')?.text;
+            }
+        });
+
+        // Fixed required fields
+        if (!dropDownState.type)       newErrors.type        = 'Please select Type';
+        if (!dropDownState.type)       {}
+        else if (dropDownState.type === 'Field Visit' && !dropDownState.nature)
+                                       newErrors.nature      = 'Please select Nature';
+        if (!dropDownState.disposition) newErrors.disposition = 'Please select Disposition';
+        if (!dropDownState.followup_date && dropDownState.disposition !== 'Not Contactable')
+                                       newErrors.followup_date = 'Please select Follow Up Date';
+        if (!dropDownState.remarks)    newErrors.remarks     = 'Please enter Remarks';
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SAVE CONFIRMATION  (mirrors Angular's savecnf())
+    // ═══════════════════════════════════════════════════════════════════════
+    const onSavePress = () => {
+        if (!validateFields()) return;
+
+        const serverDate = currentDate ? new Date(currentDate) : new Date();
+        const hour = serverDate.getHours();
+
+        if (hour < 8 || hour >= 19) {
+            // Outside office hours → confirm with user (mirrors Angular savecnf)
+            const aftermessage = hour < 8 ? 'before 8 a.m.?' : 'Post 7 p.m?';
             Alert.alert(
                 '',
                 `Have you visited/called borrower ${aftermessage}`,
                 [
-
                     {
                         text: 'Yes',
-                        onPress: () => {
-                            handleSave();
-                        },
+                        onPress: () => handleSave(null), // same as Angular: just Save()
                     },
                     {
                         text: 'No',
-                        onPress: () => {
-                            setShoowtimer(true)
-                        },
                         style: 'cancel',
-                    }
+                        onPress: () => openActivityTimePicker(), // mirrors DispositionTimeComponent dialog
+                    },
                 ],
                 { cancelable: false }
             );
-            return;
+        } else {
+            handleSave(null);
         }
-        handleSave();
-    }
+    };
 
-    const handleSave = async () => {
+    // ═══════════════════════════════════════════════════════════════════════
+    // HANDLE SAVE  (mirrors Angular's Save())
+    // activityTime: Date | null (passed directly from outside-hours flow)
+    // ═══════════════════════════════════════════════════════════════════════
+    const handleSave = async (activityTime) => {
         try {
-
-
             setLoader(true);
+
+            // Welcome Call restriction (mirrors Angular Save())
+            if (dropDownState.disposition === 'Welcome Call' && userData?.user_type === 'Fos') {
+                showSnackbar('As an FOS, you do not have permission to conduct the welcome call.');
+                return;
+            }
+
+            // Build payload (mirrors Angular params = myForm.value + extras)
             const {
                 customer_name,
                 bank_name: selling_bank,
                 trust: trustname,
                 virtual_number,
-                zone
-            } = acoountdetails;
+                zone,
+            } = accountDetails;
 
-            const data = {
+            const payload = {
+                ...dropDownState,
                 customer_name,
                 selling_bank,
                 trustname,
                 virtual_number,
                 zone,
-                source: 'Spectrum'
-            };
-            const payload = {
-                ...dropDownState,
-                ...data,
-                ...location
+                source: 'Spectrum',
+                ...location,
             };
 
-            if (payload.no_contacted_on && payload?.no_contacted_on?.account_id) {
-                payload.no_contacted_on = dropDownState?.no_contacted_on?.cont_number;
-                payload.con_id = dropDownState?.no_contacted_on?.con_sys_id;
+            // Flatten address object (mirrors Angular onselectaddress)
+            if (payload.address_visited_on?.account_id) {
+                const a = dropDownState.address_visited_on;
+                payload.address_visited_on = `${a.address1} ${a.address2} ${a.address3} ${a.city} ${a.state}`;
+                payload.add_id = a.add_sys_id;
             }
 
-            if (payload.address_visited_on && payload?.address_visited_on?.account_id) {
-                payload.address_visited_on = `${dropDownState?.address_visited_on?.address1} ${dropDownState?.address_visited_on?.address2} ${dropDownState?.address_visited_on?.address3} ${dropDownState?.address_visited_on?.city} ${dropDownState?.address_visited_on?.state}`;
-                payload.add_id = dropDownState?.address_visited_on?.add_sys_id;
+            // Flatten phone object (mirrors Angular onselectphone)
+            if (payload.no_contacted_on?.con_sys_id) {
+                payload.no_contacted_on = dropDownState.no_contacted_on.cont_number;
+                payload.con_id = dropDownState.no_contacted_on.con_sys_id;
             }
 
-            console.log('Prepared Payload:', JSON.stringify(payload, null, 2));
-            let url = 'diposition/createdisposition';
+            // No Contact / Left message → clear address & contact ids (mirrors Angular)
+            if (['No Contact', 'Left message'].includes(dropDownState.disposition)) {
+                payload.add_id = null;
+                payload.con_id = null;
+            }
+
+            // Activity time from outside-hours "No" path (mirrors Angular activity_time)
+            if (activityTime) {
+                payload.activity_time = activityTime;
+            }
+
+            // ── Site Visit: upload images ──────────────────────────────────
             if (dropDownState.type === 'Site Visit') {
-                if (dispositiondata.selected_image && dispositiondata.selected_image.length === 0) {
-                    setVisibleSnackbar(true);
-                    setMessage('Please Upload Images');
+                if (!dispositionData.selected_image?.length) {
+                    showSnackbar('Please upload images');
                     return;
                 }
-                payload.file = dispositiondata.selected_image,
-                    url = 'diposition/mobileupload'
-            };
-            setMessage('Disposition saved successfully.');
-
-            let mode = await Api.getMode()
-            if (mode == 'offline') {
-                Api.setOfflineSync({ ...payload, url })
+                payload.file = dispositionData.selected_image;
+                const response = await handleSaveOrOffline(payload, 'diposition/mobileupload');
+                onSaveSuccess(response);
                 return;
             }
-            const response = await Api.send(payload, url);
-            setVisibleSnackbar(true);
-            console.log('API Response:', JSON.stringify(response, null, 2));
 
-            props.navigation.navigate('Home')
+            const response = await handleSaveOrOffline(payload, 'diposition/createdisposition');
+            onSaveSuccess(response);
 
-            // Handle success (e.g., show a success message or redirect)
-        } catch (error) {
-            console.error('Error occurred in handleSave:', error);
-            setVisibleSnackbar(true);
-            setMessage('An error occurred while saving the disposition. Please try again.');
-
-            // Optionally, handle error (e.g., show an error notification to the user)
+        } catch (err) {
+            console.error('handleSave error:', err);
+            showSnackbar('An error occurred while saving. Please try again.');
         } finally {
             setLoader(false);
-            console.log('Final Dropdown State:', dropDownState);
         }
     };
 
-    // const formatDate = (date) => {
-    //     const day = String(date.getDate()).padStart(2, '0');
-    //     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-    //     const year = date.getFullYear();
-    //     // const hours = String(date.getHours()).padStart(2, '0');
-    //     // const minutes = String(date.getMinutes()).padStart(2, '0');
-    //     // const seconds = String(date.getSeconds()).padStart(2, '0');
-    //     return `${year}-${month}-${day} 00:00:00`;
-
-    //     // return `${year}-${month}-${day} ${00}:${minutes}:${seconds}`;
-    // };
-
-    const formatDate = (date, formatType = 'datetime') => {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-
-        if (formatType === 'datetime') {
-            // Return full date and time: YYYY-MM-DD HH:mm:ss
-            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        } else if (formatType === 'time') {
-            // Return only time: HH:mm
-            return `${hours}:${minutes}`;
-        } else if (formatType === 'date') {
-            // Return only date: YYYY-MM-DD
-            return `${year}-${month}-${day}`;
-        } else if (formatType === 'datewithtime') {
-            // Return only date: YYYY-MM-DD
-            return `${year}-${month}-${day} 00:00:00`;
+    const handleSaveOrOffline = async (payload, url) => {
+        const mode = await Api.getMode();
+        if (mode === 'offline') {
+            Api.setOfflineSync({ ...payload, url });
+            return null;
         }
-        else {
-            throw new Error('Invalid format type. Choose either "datetime", "time", or "date".');
-        }
+        return Api.send(payload, url);
     };
 
+    const onSaveSuccess = (_response) => {
+        showSnackbar('Disposition Added Successfully');
+        setTimeout(() => props.navigation.navigate('Home'), 1000);
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // IMAGE UPLOAD
+    // ═══════════════════════════════════════════════════════════════════════
+    const pickImages = () => {
+        if (dispositionData.selected_image.length >= 4) {
+            showSnackbar('Maximum 4 images can be uploaded.');
+            return;
+        }
+        ImagePicker.openPicker({
+            width: 300, height: 400,
+            mediaType: 'photo', includeBase64: true, multiple: true,
+        }).then(images => {
+            if (images.length + dispositionData.selected_image.length > 4) {
+                showSnackbar('Maximum 4 images can be uploaded.');
+                return;
+            }
+            const mapped = images.map(img => ({
+                image: `data:${img.mime};base64,${img.data}`,
+                type: img.mime,
+                filename: getFileNameAndExtension(img.path).fileName,
+                extension: getFileNameAndExtension(img.path).extension,
+            }));
+            setDispositionData(prev => ({
+                ...prev,
+                selected_image: [...prev.selected_image, ...mapped],
+            }));
+        }).catch(err => console.log('Image picker error', err));
+    };
 
     const removeImage = (index) => {
-        console.log(index);
-
-        // Create a shallow copy of the selected_image array
-        let images = [...dispositiondata.selected_image];
-
-        // Remove the item at the given index
-        images.splice(index, 1);
-
-        console.log(images);
-
-        // Update the state with the new array
-        setSelected('selected_image', images);
-    }
-    const pickimages = () => {
-        if (dispositiondata['selected_image'].length < 5) {
-            ImagePicker.openPicker({
-                width: 300,
-                height: 400,
-                mediaType: 'photo',
-                includeBase64: true,
-                multiple: true
-                // cropping: true
-            }).then(image => {
-                if (image.length < 5) {
-                    let images = image.map(item => {
-                        return {
-
-                            'image': `data:${item.mime};base64,${item.data}`, type: item.mime,
-                            filename: getFileNameAndExtension(item.path).fileName,
-                            extension: getFileNameAndExtension(item.path).extension
-                        }
-                    })
-                    setSelected('selected_image', [...dispositiondata['selected_image'], ...images])
-                } else {
-                    showError();
-                }
-            });
-
-        } else {
-            showError();
-        }
-    }
-
-    const showError = () => {
-        setVisibleSnackbar(true);
-        setMessage('Please note that a maximum of 4 images can be uploaded. Kindly reduce the number of images and try again');
-    }
-
-    const setSelected = (key, item) => {
-        setdispositiondata(prv => {
-            return { ...prv, [key]: item }
-        })
+        setDispositionData(prev => {
+            const images = [...prev.selected_image];
+            images.splice(index, 1);
+            return { ...prev, selected_image: images };
+        });
     };
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+    const showSnackbar = (msg) => {
+        setMessage(msg);
+        setVisibleSnackbar(true);
+    };
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // RENDER HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+    const renderDynamicField = (field, index) => {
+        const { type, formControl_name, label } = field;
+
+        // Exclude person_contacted from rendering (handled separately above the loop)
+        if (formControl_name === 'person_contacted') return null;
+
+        // ── Address dropdown ───────────────────────────────────────────────
+        if (type === 'dropdown' && formControl_name === 'address_visited_on') {
+            return (
+                <View key={index} style={styles.input}>
+                    <Dropdown
+                        hideMenuHeader={true}
+                        label={label}
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        placeholder={label}
+                        value={dropDownState[formControl_name]}
+                        onSelect={(item) => handleDropDownChange(formControl_name, item)}
+                        options={(address ?? []).map(a => ({
+                            label: `${a.address1 ?? ''} ${a.address2 ?? ''} ${a.address3 ?? ''} ${a.city ?? ''} ${a.state ?? ''}`.trim(),
+                            value: a,
+                        }))}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Phone / number contacted dropdown ──────────────────────────────
+        if (type === 'dropdown' && formControl_name === 'no_contacted_on') {
+            return (
+                <View key={index} style={styles.input}>
+                    <Dropdown
+                        hideMenuHeader={true}
+                        label={label}
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        placeholder={label}
+                        value={dropDownState[formControl_name]}
+                        onSelect={(item) => handleDropDownChange(formControl_name, item)}
+                        options={(contact ?? []).map(c => ({
+                            label: c.cont_number,
+                            value: c,
+                        }))}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Customer name dropdown (person_contacted_name) ─────────────────
+        if (type === 'dropdown' && formControl_name === 'person_contacted_name') {
+            return (
+                <View key={index} style={styles.input}>
+                    <Dropdown
+                        hideMenuHeader={true}
+                        label="Name"
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        placeholder="Select Name"
+                        value={dropDownState[formControl_name]}
+                        onSelect={(item) => handleDropDownChange(formControl_name, item)}
+                        options={(customerList ?? []).map(c => ({
+                            label: c['Customer Name'],
+                            value: c['Customer Name'],
+                        }))}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Generic dropdown ───────────────────────────────────────────────
+        if (type === 'dropdown') {
+            return (
+                <View key={index} style={styles.input}>
+                    <Dropdown
+                        hideMenuHeader={true}
+                        label={label}
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        placeholder={label}
+                        value={dropDownState[formControl_name]}
+                        onSelect={(item) => handleDropDownChange(formControl_name, item)}
+                        options={(field.dropdowndata ?? []).map(item => ({
+                            label: item,
+                            value: item,
+                        }))}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Text input ─────────────────────────────────────────────────────
+        if (type === 'text') {
+            return (
+                <View key={index} style={styles.input}>
+                    <TextInput
+                        label={label}
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        keyboardType={field.rules?.pattern ? 'numeric' : 'default'}
+                        value={dropDownState[formControl_name]}
+                        onChangeText={(v) => handleDropDownChange(formControl_name, v)}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Time picker ────────────────────────────────────────────────────
+        if (type === 'time') {
+            return (
+                <View key={index} style={styles.input}>
+                    <TextInput
+                        label={label}
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        readOnly
+                        value={dropDownState[formControl_name]}
+                        right={
+                            <TextInput.Icon
+                                color={COLORS.primary}
+                                icon="clock-outline"
+                                onPress={() => openDatePicker(label)}
+                            />
+                        }
+                    />
+                    {showDatePicker && datePickerLabel === label && (
+                        <DateTimePicker
+                            mode="time"
+                            display="clock"
+                            value={new Date()}
+                            onChange={(e, d) => onDateChange(e, d, formControl_name, 'time')}
+                        />
+                    )}
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Date picker ────────────────────────────────────────────────────
+        if (type === 'date') {
+            return (
+                <View key={index} style={styles.input}>
+                    <TextInput
+                        label={label}
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        readOnly
+                        value={dropDownState[formControl_name]}
+                        right={
+                            <TextInput.Icon
+                                color={COLORS.primary}
+                                icon="calendar"
+                                onPress={() => openDatePicker(label)}
+                            />
+                        }
+                    />
+                    {showDatePicker && datePickerLabel === label && (
+                        <DateTimePicker
+                            minimumDate={new Date()}
+                            mode="date"
+                            display="calendar"
+                            value={
+                                dropDownState[formControl_name]
+                                    ? new Date(dropDownState[formControl_name])
+                                    : new Date()
+                            }
+                            onChange={(e, d) => onDateChange(e, d, formControl_name, 'date')}
+                        />
+                    )}
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        // ── Number input ───────────────────────────────────────────────────
+        if (type === 'number') {
+            return (
+                <View key={index} style={styles.input}>
+                    <TextInput
+                        label={label}
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        keyboardType="numeric"
+                        value={dropDownState[formControl_name]}
+                        onChangeText={(v) => handleDropDownChange(formControl_name, v)}
+                    />
+                    {errors[formControl_name] ? <Text style={styles.errorText}>{errors[formControl_name]}</Text> : null}
+                </View>
+            );
+        }
+
+        return null;
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════════════════
     return (
         <View style={styles.container}>
             {loader && <Loader />}
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {<Snackbar
+            {/* ── Activity-Time Modal (matches Angular's DispositionTimeComponent dialog) ── */}
+            <Modal
+                visible={showActivityModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowActivityModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Visit / Call Time</Text>
+                        <Text style={styles.modalSubtitle}>
+                            {activityPickerStep === 'date'
+                                ? 'Select the date of your visit / call:'
+                                : 'Select the actual time of your visit / call:'}
+                        </Text>
+
+                        {activityPickerStep === 'date' && (
+                            <DateTimePicker
+                                mode="date"
+                                display="calendar"
+                                value={activityDateValue}
+                                maximumDate={new Date()}
+                                onChange={onActivityDateChange}
+                            />
+                        )}
+                        {activityPickerStep === 'time' && (
+                            <DateTimePicker
+                                mode="time"
+                                display="clock"
+                                value={activityDateValue}
+                                onChange={onActivityTimeChange}
+                            />
+                        )}
+
+                        <TouchableOpacity
+                            style={styles.modalCancelBtn}
+                            onPress={() => setShowActivityModal(false)}
+                        >
+                            <Text style={styles.modalCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
+
+                {/* ── Snackbar ── */}
+                <Snackbar
                     style={{ zIndex: 100 }}
                     visible={visibleSnackbar}
                     onDismiss={() => setVisibleSnackbar(false)}
                     duration={Snackbar.DURATION_SHORT}
                 >
                     {message}
-                </Snackbar>}
+                </Snackbar>
+
+                {/* ── Outside-hours banner (mirrors Angular's alert div) ── */}
+                {outsideHours && (
+                    <View style={styles.outsideBanner}>
+                        <Text style={styles.outsideBannerText}>
+                            ⚠ Outside office hours –{' '}
+                            {currentDate
+                                ? new Date(currentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : ''}
+                        </Text>
+                    </View>
+                )}
+
+                {/* ── Account Number (read-only, pre-filled from route.params) ── */}
                 <View style={{ ...styles.input, marginTop: 20 }}>
                     <Dropdown
                         hideMenuHeader={true}
-
-                        style={styles.inputstyle}
-                        menuContentStyle={styles.menuContentStyle}
                         label="Account Number"
                         placeholder="Account Number"
-                        options={[
-                            {
-                                label: selectedOption,
-                                value: selectedOption,
-                            },
-                        ]}
-                        mode='outlined'
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        options={[{ label: accountDetails.account_no, value: accountDetails.account_no }]}
                         value={dropDownState.account_number}
                         onSelect={(item) => handleDropDownChange('account_number', item)}
                     />
                 </View>
 
+                {/* ── Type ── */}
                 <View style={styles.input}>
                     <Dropdown
                         hideMenuHeader={true}
-                        label="Type"
-                        style={styles.inputstyle}
-                        menuContentStyle={styles.menuContentStyle}
+                        label="Type *"
                         placeholder="Select Type"
-                        // options={type}
-                        options={dispositionCount == 0 ?
-                            typeOption.filter(item => item.value === 'Call') : typeOption
+                        mode="outlined"
+                        style={styles.inputstyle}
+                        menuContentStyle={styles.menuContentStyle}
+                        options={
+                            dispositionCount === 0
+                                ? TYPE_OPTIONS.filter(t => t.value === 'Call')
+                                : TYPE_OPTIONS
                         }
-                        mode='outlined'
                         value={dropDownState.type}
-                        onSelect={(item) => handleDropDownChange('type', item)}
+                        onSelect={(item) => onSelectType(item)}
                     />
-                    {errors.type && <Text style={styles.errorText}>{errors.type}</Text>}
+                    {errors.type ? <Text style={styles.errorText}>{errors.type}</Text> : null}
                 </View>
 
-                {dropDownState.type == 'Field Visit' && <View style={styles.input}>
-                    <Dropdown
-                        hideMenuHeader={true}
-                        label="Nature"
-                        style={styles.inputstyle}
-                        menuContentStyle={styles.menuContentStyle}
-                        placeholder="Select Nature"
-                        options={nature}
-                        mode='outlined'
-                        value={dropDownState.nature}
-                        onSelect={(item) => handleDropDownChange('nature', item)}
-                    />
-                    {errors.nature && <Text style={styles.errorText}>{errors.nature}</Text>}
-                </View>
-                }
-
-
-
-                {dropDownState.type != 'Site Visit' && <View style={styles.input}>
-                    <Dropdown
-                        label="Disposition"
-                        hideMenuHeader={true}
-                        style={styles.inputstyle}
-                        menuContentStyle={styles.menuContentStyle}
-                        placeholder="Select Disposition"
-                        options={dropdowndata?.disposition_masterfilter?.map(item => ({
-                            label: item.disposition_name,
-                            value: item.disposition_name,
-                        })) || []}
-                        mode='outlined'
-                        value={dropDownState.disposition}
-                        onSelect={handleSelectionChange}
-                    />
-                    {errors.disposition && <Text style={styles.errorText}>{errors.disposition}</Text>}
-
-                </View>
-                }
-                {formFields.map((field, index) => (
-                    <View key={index} style={styles.input}>
-
-                        {(field.type === 'dropdown' && field.formControl_name === 'no_contacted_on') && (
-                            <Dropdown key={index + field.formControl_name}
-                                hideMenuHeader={true}
-                                label={field.label}
-                                mode="outlined"
-                                style={styles.inputstyle}
-                                menuContentStyle={styles.menuContentStyle}
-                                placeholder={field.label}
-                                value={dropDownState[field.formControl_name]}
-                                onSelect={(item) => handleDropDownChange(field.formControl_name, item)}
-                                options={contact?.map(item => ({
-                                    label: item.cont_number,
-                                    value: item,
-                                })) || []}
-                            />
-                        )}
-
-                        {(field.type === 'dropdown' && field.formControl_name === 'person_contacted_name') && (
-                            <Dropdown key={index + field.formControl_name}
-                                hideMenuHeader={true}
-                                label='Name'
-                                mode="outlined"
-                                style={styles.inputstyle}
-                                menuContentStyle={styles.menuContentStyle}
-                                placeholder={field.label}
-                                value={dropDownState[field.formControl_name]}
-                                onSelect={(item) => handleDropDownChange(field.formControl_name, item)}
-                                options={customerList?.map(item => ({
-                                    label: item['Customer Name'],
-                                    value: item['Customer Name'],
-                                }))}
-                            />
-                        )}
-
-
-                        {(field.type === 'dropdown' && field.formControl_name === 'address_visited_on') && (
-                            <Dropdown key={index + field.formControl_name}
-                                hideMenuHeader={true}
-                                label={field.label}
-                                mode="outlined"
-                                style={styles.inputstyle}
-
-                                // CustomDropdownItem = {(item) => (
-                                //     <ScrollView horizontal>
-                                //       <Text style={{color:COLORS.black}}>{JSON.stringify(item)}</Text>
-                                //     </ScrollView>
-                                //   )}
-                                menuContentStyle={styles.menuContentStyle}
-                                placeholder={field.label}
-                                value={dropDownState[field.formControl_name]}
-                                onSelect={(item) => handleDropDownChange(field.formControl_name, item)}
-                                options={adress?.map(item => ({
-                                    label: `${item.address1} ${item.address2} ${item.address3} ${item.city} ${item.state}`,
-                                    value: item,
-                                })) || []}
-                            />
-                        )}
-
-                        {((field.type === 'dropdown' && (field.formControl_name !== 'address_visited_on' && field.formControl_name !== 'no_contacted_on' && field.formControl_name !== 'person_contacted_name'))) && (
-                            <Dropdown key={index + field.formControl_name}
-                                hideMenuHeader={true}
-                                label={field.label}
-                                mode="outlined"
-                                style={styles.inputstyle}
-                                menuContentStyle={styles.menuContentStyle}
-                                placeholder={field.label}
-                                textInputStyle={{
-                                    numberOfLines: 4, // Limits to one line
-                                    textAlign: 'left', // Align text to the left
-                                }}
-                                value={dropDownState[field.formControl_name]}
-                                onSelect={(item) => handleDropDownChange(field.formControl_name, item)}
-                                options={field?.dropdowndata?.map(item => ({
-                                    label: item,
-                                    value: item,
-                                })) || []}
-                            />
-                        )}
-                        {field.type === 'text' && (
-                            <TextInput key={index + field.formControl_name}
-                                label={field.label}
-                                value={dropDownState[field.formControl_name]}
-                                onChangeText={(item) => handleDropDownChange(field.formControl_name, item)}
-                                mode='outlined'
-                                keyboardType={field.rules?.pattern ? 'numeric' : 'default'}
-                            />
-                        )}
-
-                        {field.type === 'time' && (
-                            <>
-                                <TextInput key={index + field.formControl_name}
-                                    mode='outlined'
-                                    readOnly
-                                    value={dropDownState[field.formControl_name]}
-                                    // onChangeText={(item) => handleDropDownChange(field.formControl_name, item)}
-                                    right={<TextInput.Icon color={COLORS.primary} icon="clock-outline" onPress={() => onDateClick(field.label)} />}
-                                    label={field.label}
-                                />
-                                {(showDatePicker && label === field.label) && (
-                                    <DateTimePicker key={index + field.formControl_name + 'date'}
-                                        // minimumDate={new Date()}
-                                        mode='time'
-                                        display='clock'
-                                        value={new Date()}
-                                        // value={dropDownState[field.formControl_name] ? new Date(dropDownState[field.formControl_name]): new Date()}
-                                        onChange={(event, date) => onChange(event, date, field.formControl_name, 'time')}
-                                    />
-                                )}
-                            </>
-                        )}
-                        {field.type === 'date' && (
-                            <>
-                                <TextInput key={index + field.formControl_name}
-                                    mode='outlined'
-                                    readOnly
-                                    value={dropDownState[field.formControl_name]}
-                                    // onChangeText={(item) => handleDropDownChange(field.formControl_name, item)}
-                                    right={<TextInput.Icon color={COLORS.primary} icon="calendar" onPress={() => onDateClick(field.label)} />}
-                                    label={field.label}
-                                />
-                                {(showDatePicker && label === field.label) && (
-                                    <DateTimePicker key={index + field.formControl_name + 'date'}
-                                        minimumDate={new Date()}
-                                        mode='date'
-                                        display='calendar'
-                                        value={dropDownState[field.formControl_name] ? new Date(dropDownState[field.formControl_name]) : new Date()}
-                                        onChange={(event, date) => onChange(event, date, field.formControl_name)}
-                                    />
-                                )}
-                            </>
-                        )}
-                        {errors[field.formControl_name] && <Text style={styles.errorText}>{errors[field.formControl_name]}</Text>}
-
-                    </View>
-                ))}
-
-                <View style={styles.input}>
-                    <TextInput
-                        mode='outlined'
-                        readOnly
-                        activeOutlineColor={COLORS.primary}
-                        value={dropDownState.followup_date}
-
-                        right={<TextInput.Icon icon="calendar" color={COLORS.primary} onPress={() => onDateClick('Followup Date')} />}
-                        label='Follow Up Date'
-                    />
-
-                    {(showDatePicker && label === 'Followup Date') && (
-                        <DateTimePicker
-                            minimumDate={new Date()}
-                            mode='date'
-                            display='calendar'
-                            value={date}
-                            textColor='red'
-                            accentColor='red'
-
-                            onChange={OndateSelected}
+                {/* ── Nature (only for Field Visit) ── */}
+                {dropDownState.type === 'Field Visit' && (
+                    <View style={styles.input}>
+                        <Dropdown
+                            hideMenuHeader={true}
+                            label="Nature *"
+                            placeholder="Select Nature"
+                            mode="outlined"
+                            style={styles.inputstyle}
+                            menuContentStyle={styles.menuContentStyle}
+                            options={NATURE_OPTIONS}
+                            value={dropDownState.nature}
+                            onSelect={(item) => handleDropDownChange('nature', item)}
                         />
-                    )}
-
-                    {errors.followup_date && <Text style={styles.errorText}>{errors.followup_date}</Text>}
-
-
-
-                </View>
-
-                <View style={styles.input}>
-                    <TextInput
-                        mode='outlined'
-                        label="Remark"
-                        placeholder="Enter your remark"
-                        value={dropDownState.remarks}
-                        onChangeText={(item) => handleDropDownChange('remarks', item)}
-                        multiline={true}
-                        numberOfLines={4}
-                        activeOutlineColor={COLORS.primary}
-                    />
-                    {errors.remarks && <Text style={styles.errorText}>{errors.remarks}</Text>}
-                </View>
-
-
-                {(shoowtimer && previousdate) && (
-
-                    <DateTimePicker
-                        mode='date'
-                        display='calendar'
-                        minimumDate={predateValue}
-                        maximumDate={new Date()}
-                        value={predateValue}
-                        onChange={(event, date) => onChangeActivity(event, date, 'activity_date', 'date')}
-                    />
-
-
+                        {errors.nature ? <Text style={styles.errorText}>{errors.nature}</Text> : null}
+                    </View>
                 )}
 
+                {/* ── Disposition (hidden for Site Visit, auto-selected) ── */}
+                {dropDownState.type !== 'Site Visit' && (
+                    <View style={styles.input}>
+                        <Dropdown
+                            hideMenuHeader={true}
+                            label="Disposition *"
+                            placeholder="Select Disposition"
+                            mode="outlined"
+                            style={styles.inputstyle}
+                            menuContentStyle={styles.menuContentStyle}
+                            options={(dispositionMaster ?? []).map(d => ({
+                                label: d.disposition_name,
+                                value: d.disposition_name,
+                            }))}
+                            value={dropDownState.disposition}
+                            onSelect={(item) => onSelectDisposition(item)}
+                        />
+                        {errors.disposition ? <Text style={styles.errorText}>{errors.disposition}</Text> : null}
+                    </View>
+                )}
 
-                {(!previousdate && shoowtimer) && (<DateTimePicker
-                    value={predateValue} // Use the selected time or current time
-                    mode='time' // Show only the time picker
-                    display='clock'
-                    onChange={(event, date) => onChangeActivity(event, date, 'activity_time', previousdatetime ? 'time' : 'datetime')}
-                />)}
-                {dropDownState.type === 'Site Visit' && <ScrollView
-                    showsHorizontalScrollIndicator={false}
-                    horizontal={true}
-                    style={styles.imagedrawer}
-                >
+                {/* ── Person Contacted (shown when disposition is selected & not Not Contactable) ── */}
+                {dropDownState.disposition && dropDownState.disposition !== 'Not Contactable' && (
+                    <View style={styles.input}>
+                        <Dropdown
+                            hideMenuHeader={true}
+                            label="Person Contacted *"
+                            placeholder="Select Person Contacted"
+                            mode="outlined"
+                            style={styles.inputstyle}
+                            menuContentStyle={styles.menuContentStyle}
+                            options={(
+                                formFields.find(f => f.formControl_name === 'person_contacted')
+                                    ?.dropdowndata ?? []
+                            ).map(item => ({ label: item, value: item }))}
+                            value={dropDownState.person_contacted}
+                            onSelect={(item) => handleDropDownChange('person_contacted', item)}
+                        />
+                        {errors.person_contacted
+                            ? <Text style={styles.errorText}>{errors.person_contacted}</Text>
+                            : null}
+                    </View>
+                )}
 
-                    {dispositiondata['selected_image'].map((item, index) => {
+                {/* ── Dynamic form fields (from disposition config) ── */}
+                {formFields.map((field, index) => renderDynamicField(field, index))}
 
-                        return <View style={{ position: 'relative' }}>
-                            <View style={{ position: 'absolute', width: 15, height: 15, right: 5, top: 5, zIndex: 100 }}>
-                                <TouchableOpacity onPress={() => removeImage(index)} onLongPress={() => removeImage(index)} >
-                                    <IconManager iconClass="antdesign" icon='closecircleo' color={COLORS.black} size={15} />
-                                </TouchableOpacity>
-                            </View>
+                {/* ── Follow-up Date ── */}
+                <View style={styles.input}>
+                    <TextInput
+                        label="Follow Up Date *"
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        readOnly
+                        value={dropDownState.followup_date ?? ''}
+                        right={
+                            <TextInput.Icon
+                                icon="calendar"
+                                color={COLORS.primary}
+                                onPress={() => openDatePicker('Followup Date')}
+                            />
+                        }
+                    />
+                    {showDatePicker && datePickerLabel === 'Followup Date' && (
+                        <DateTimePicker
+                            minimumDate={new Date()}
+                            mode="date"
+                            display="calendar"
+                            value={date}
+                            onChange={onFollowUpDateChange}
+                        />
+                    )}
+                    {errors.followup_date ? <Text style={styles.errorText}>{errors.followup_date}</Text> : null}
+                </View>
 
-                            <Card key={index} mode='outlined' style={styles.imgdrwcard} >
+                {/* ── Remarks ── */}
+                <View style={styles.input}>
+                    <TextInput
+                        label="Remarks"
+                        placeholder="Enter your remark"
+                        mode="outlined"
+                        activeOutlineColor={COLORS.primary}
+                        multiline
+                        numberOfLines={4}
+                        value={dropDownState.remarks ?? ''}
+                        onChangeText={(v) => handleDropDownChange('remarks', v ? v.trim() ? v : null : null)}
+                    />
+                    {errors.remarks ? <Text style={styles.errorText}>{errors.remarks}</Text> : null}
+                </View>
 
-                                <Card.Cover
-
-                                    style={{ width: 100, height: 120, marginHorizontal: 13, borderRadius: 10 }}
-                                    source={{ uri: item.image }} />
-
-                            </Card>
+                {/* ── Site Visit image upload ── */}
+                {dropDownState.type === 'Site Visit' && (
+                    <>
+                        <View style={styles.imageSectionHeader}>
+                            <Text style={styles.imageSectionLabel}>Upload Site Visit Images</Text>
+                            <Text style={styles.imageSectionHint}>Max 4 images</Text>
                         </View>
 
-                    })
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.imagedrawer}
+                        >
+                            {dispositionData.selected_image.map((item, idx) => (
+                                <View key={idx} style={{ position: 'relative' }}>
+                                    <View style={styles.imageCloseBtn}>
+                                        <TouchableOpacity onPress={() => removeImage(idx)}>
+                                            <IconManager
+                                                iconClass="antdesign"
+                                                icon="closecircleo"
+                                                color={COLORS.white}
+                                                size={16}
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Card mode="outlined" style={styles.imgdrwcard}>
+                                        <Card.Cover
+                                            style={styles.imageCover}
+                                            source={{ uri: item.image }}
+                                        />
+                                    </Card>
+                                </View>
+                            ))}
 
-                    }
-                    <Card style={{ flexDirection: 'row', justifyContent: 'center', alignSelf: "center", marginLeft: 10 }}>
-                        <Card.Content>
-                            <IconButton
-                                style={{ width: 80, marginHorizontal: 13, borderRadius: 10 }}
-                                icon="camera"
-                                // iconColor={'black'}
-                                size={50}
-                                onPress={pickimages}
-                            />
-                        </Card.Content>
-                    </Card>
+                            {/* Add-image button */}
+                            <Card style={styles.addImageCard}>
+                                <Card.Content>
+                                    <IconButton
+                                        style={styles.addImageBtn}
+                                        icon="camera"
+                                        size={45}
+                                        onPress={pickImages}
+                                    />
+                                </Card.Content>
+                            </Card>
+                        </ScrollView>
+                    </>
+                )}
 
-                </ScrollView>}
             </ScrollView>
 
-
+            {/* ── Save Button ── */}
             <View style={styles.btnctn}>
-                <TouchableOpacity onPress={validation}>
-                    <Text style={{ textAlign: 'center', color: COLORS.white, fontSize: 16, letterSpacing: 1, padding: 20 }}>Save</Text>
+                <TouchableOpacity onPress={onSavePress} style={styles.saveBtn}>
+                    <Text style={styles.saveBtnText}>Save Disposition</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -1036,44 +1128,169 @@ const DispositionNew = (props) => {
 
 export default DispositionNew;
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // backgroundColor: COLORS.bg,
+        backgroundColor: '#F5F7FA', // light gray background
         position: 'relative',
-        paddingBottom: 70,
-        backgroundColor: COLORS.white
     },
+
+    // Outside-hours banner
+    outsideBanner: {
+        backgroundColor: '#E8F0FE',
+        borderLeftWidth: 4,
+        borderLeftColor: '#1A56DB',
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 4,
+        borderRadius: 6,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+    },
+    outsideBannerText: {
+        color: '#1A56DB',
+        fontSize: 13,
+        fontWeight: '500',
+    },
+
+    // Form inputs
     input: {
-        marginBottom: 20,
-        paddingLeft: 20,
-        paddingRight: 20
+        marginBottom: 16,
+        paddingHorizontal: 16,
     },
     inputstyle: {
-        backgroundColor: COLORS.white,
-        // borderColor: 'red', // Customize border color
-        borderWidth: 2,
-        // borderColor : COLORS.primary,
-
+        backgroundColor: '#FFFFFF',
     },
     menuContentStyle: {
-        backgroundColor: '#fff',
+        backgroundColor: '#FFFFFF',
         width: '100%',
-
     },
-    btnctn: {
 
-        backgroundColor: COLORS.primary,
-        position: 'absolute',
-        width: '100%',
-        bottom: 0
-    },
+    // Error text
     errorText: {
-        color: 'red',
-        marginTop: 5,
+        color: '#D32F2F',
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
-    imgdrwcard: { flexDirection: 'row', justifyContent: 'center', marginLeft: 10 },
-    imagedrawer: { display: 'flex', flexDirection: 'row', height: 120, paddingHorizontal: 3, alignSelf: 'center' },
+
+    // Save button
+    btnctn: {
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        backgroundColor: '#1A56DB', // blue
+    },
+    saveBtn: {
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    saveBtnText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
+
+    // Image section
+    imageSectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        marginBottom: 8,
+    },
+    imageSectionLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    imageSectionHint: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    imagedrawer: {
+        height: 140,
+        paddingHorizontal: 12,
+        marginBottom: 16,
+    },
+    imgdrwcard: {
+        marginHorizontal: 6,
+        borderRadius: 10,
+    },
+    imageCover: {
+        width: 100,
+        height: 115,
+        borderRadius: 10,
+    },
+    imageCloseBtn: {
+        position: 'absolute',
+        right: 8,
+        top: 6,
+        zIndex: 10,
+        backgroundColor: '#1A56DB',
+        borderRadius: 10,
+        padding: 1,
+    },
+    addImageCard: {
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginHorizontal: 6,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        borderStyle: 'dashed',
+        backgroundColor: '#F9FAFB',
+    },
+    addImageBtn: {
+        width: 90,
+        borderRadius: 10,
+    },
+
+    // Activity-time modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 24,
+        width: '100%',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 6,
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    modalCancelBtn: {
+        marginTop: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    modalCancelText: {
+        color: '#374151',
+        fontSize: 14,
+        fontWeight: '500',
+    },
 });
-
-

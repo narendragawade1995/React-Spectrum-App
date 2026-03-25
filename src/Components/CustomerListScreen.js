@@ -361,6 +361,7 @@ const CustomerListScreen = ({ route, navigation }) => {
   const getCustomerList = async () => {
     try {
 
+      console.log(route.params);
       let result = await Api.send(route.params, 'secure_borrowerdetails/getcustomerList');
       setCustomerlist(result);
       setLoader(false); 

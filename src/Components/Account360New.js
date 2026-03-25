@@ -69,7 +69,6 @@ const SECTIONS = [
     ]},
   { key: "collateral",        title: "Collateral Details",        icon: "home-city",              accent: "#37474F" },
 ];
-
 // ─── component ────────────────────────────────────────────────────────────────
 const Account360 = ({ route, navigation }) => {
   const [loandata,      setLoandata]      = useState([]);

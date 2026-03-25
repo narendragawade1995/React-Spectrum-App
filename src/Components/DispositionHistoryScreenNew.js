@@ -6,7 +6,8 @@
  *  • Server-side pagination → 20 records per page, infinite scroll
  *  • Skeleton loader on initial load + on loading next page
  *  • Account search (autocomplete after 3 chars, API debounced)
- *  • Filter bottom sheet: Trust Name, Disposition, Virtual Acc, Customer Name
+ *  • Filter bottom sheet: Trust, Disposition, Source, Zone,
+ *    Selling Bank, Date range, UserType, Username
  *  • Active filter chips (removable)
  *  • Tap card → Detail bottom sheet
  *
@@ -23,7 +24,8 @@ import React, {
   useEffect,
   useRef,
   useCallback,
-  useMemo,useLayoutEffect
+  useMemo,
+  useLayoutEffect,
 } from 'react';
 import {
   View,
@@ -41,24 +43,21 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Api from "../Utilities/apiService";
 
 const { width: SW } = Dimensions.get('window');
+
+/* ─────────────────────────────────────────────────────────────
+   CONFIG — set your real API base URL here
+───────────────────────────────────────────────────────────── */
+const BASE_URL = 'https://testappapi.edelweissarc.in/api/v3/'; // ← replace with actual base URL
 
 /* ─────────────────────────────────────────────────────────────
    CONSTANTS
 ───────────────────────────────────────────────────────────── */
 const PAGE_SIZE = 20;
 
-const DISPOSITIONS = [
-  'Willing to discuss',
-  'Promise to pay',
-  'Dispute',
-  'Not contactable',
-  'Broken promise',
-  'Paid',
-];
-
-const TRUST_NAMES = ['H89', 'H90', 'H91', 'H92', 'H93'];
+const USER_TYPES = ['All', 'Telecaller', 'Fos'];
 
 const CHIP_COLORS = {
   'Willing to discuss': { bg: '#DBEAFE', text: '#1D4ED8', dot: '#2563EB' },
@@ -76,90 +75,177 @@ const typeIcon = t =>
   t === 'Field Visit' ? '🏠' : t === 'Phone Call' ? '📞' : '📋';
 
 /* ─────────────────────────────────────────────────────────────
-   MOCK API  — replace these with your real API calls
-   All functions return Promises that resolve { data, totalCount }
+   FIELD MAPPER — maps Angular API response fields → RN card fields
 ───────────────────────────────────────────────────────────── */
-// Huge mock dataset (60 records) to demonstrate pagination
-const _generateMockRecords = () => {
-  const accounts = [
-    { accountNo: 'HL/0045/H/19/100024', borrowerName: 'ASHA DEVI',     virtual: 'EARH89ASHA1035942',   trustName: 'H89', sellingBank: 'Poonawalla Housing Finance Ltd' },
-    { accountNo: 'HL/0045/H/19/100025', borrowerName: 'RAMESH KUMAR',  virtual: 'EARH89RAMESH103600',  trustName: 'H90', sellingBank: 'Poonawalla Housing Finance Ltd' },
-    { accountNo: 'HL/0045/H/19/100026', borrowerName: 'PRIYA SHARMA',  virtual: 'EARH89PRIYA1036100',  trustName: 'H91', sellingBank: 'Poonawalla Housing Finance Ltd' },
-    { accountNo: 'HL/0032/H/20/200010', borrowerName: 'SURESH PATEL',  virtual: 'EARH89SURESH200010',  trustName: 'H92', sellingBank: 'Poonawalla Housing Finance Ltd' },
-    { accountNo: 'HL/0032/H/20/200011', borrowerName: 'NEHA GUPTA',    virtual: 'EARH89NEHA2000115',   trustName: 'H92', sellingBank: 'Poonawalla Housing Finance Ltd' },
-    { accountNo: 'HL/0019/H/21/300001', borrowerName: 'VIKRAM SINGH',  virtual: 'EARH89VIKRAM300001',  trustName: 'H93', sellingBank: 'Poonawalla Housing Finance Ltd' },
-  ];
-  const subDisps = ['Need some time to pay','Will arrange funds','Will pay by month end','Phone switched off','Salary credit pending','Account mismatch','Full payment received','Did not pay as promised'];
-  const defaultReasons = ['Intentional defaulter','Financial difficulty','Temporary cashflow','Unknown','Salary delay','Dispute','Resolved','Broke promise'];
-  const types = ['Field Visit', 'Phone Call'];
-  const persons = ['Borrower', 'Co-borrower', 'None'];
-  const days = ['28 Sep 2024','01 Oct 2024','03 Oct 2024','05 Oct 2024','08 Oct 2024','10 Oct 2024','12 Oct 2024','14 Oct 2024','15 Oct 2024','16 Oct 2024'];
-  const times = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','14:00','14:30','15:00','15:45','16:00','16:20'];
+const mapRecord = item => ({
+  id:              item.id || item.dis_id || Math.random().toString(),
+  accountNo:       item.account_number   || '—',
+  borrowerName:    item.customer_name    || '—',
+  virtual:         item.virtual_number   || '—',
+  sellingBank:     item.selling_bank     || '—',
+  trustName:       item.trustname        || '—',
+  disposition:     item.disposition      || '—',
+  subDisposition:  item.reason || item.sub_disposition || '—',
+  type:            item.type             || '—',
+  personContacted: item.person_contacted || '—',
+  defaultReason:   item.default_reason   || '—',
+  callBackDate:    item.call_back_date   || '—',
+  date:            item.activity_date    || '—',
+  time:            item.activity_time || item.disposition_time || '—',
+  userName:        item.username         || '—',
+  source:          item.source           || '—',
+  hasSiteVisitImage: item.site_visit_image === 1,
+});
 
-  const records = [];
-  for (let i = 0; i < 60; i++) {
-    const acc = accounts[i % accounts.length];
-    const disp = DISPOSITIONS[i % DISPOSITIONS.length];
-    records.push({
-      id: i + 1,
-      ...acc,
-      disposition: disp,
-      subDisposition: subDisps[i % subDisps.length],
-      date: days[i % days.length],
-      time: times[i % times.length],
-      userName: i % 3 === 0 ? 'fielduser' : 'appuser',
-      defaultReason: defaultReasons[i % defaultReasons.length],
-      type: types[i % types.length],
-      personContacted: persons[i % persons.length],
-      callBackDate: i % 7 === 0 ? '—' : days[(i + 3) % days.length],
-    });
-  }
-  return records;
-};
-
-const MOCK_DB = _generateMockRecords();
+/* ─────────────────────────────────────────────────────────────
+   REAL API FUNCTIONS
+   (mirrors Angular's diposition/getdisposition + helpers)
+───────────────────────────────────────────────────────────── */
 
 /**
  * fetchDispositions — server-side paginated list
- * @param {object} params  { page, pageSize, accountNo, disposition, trustName, virtual, customerName }
- * @returns {Promise<{ data: array, totalCount: number }>}
+ * Angular endpoint: POST diposition/getdisposition
+ * Angular params:   pageIndex (0-based), pageSize 20, sortcolumn "id", type "Field Visit"
  */
-const fetchDispositions = (params) =>
-  new Promise(resolve => {
-    setTimeout(() => {
-      let filtered = [...MOCK_DB];
-      if (params.accountNo)    filtered = filtered.filter(r => r.accountNo === params.accountNo);
-      if (params.disposition)  filtered = filtered.filter(r => r.disposition === params.disposition);
-      if (params.trustName)    filtered = filtered.filter(r => r.trustName === params.trustName);
-      if (params.virtual)      filtered = filtered.filter(r => r.virtual.toLowerCase().includes(params.virtual.toLowerCase()));
-      if (params.customerName) filtered = filtered.filter(r => r.borrowerName.toLowerCase().includes(params.customerName.toLowerCase()));
+const fetchDispositions = async params => {
+  const body = {
+    pageIndex:              params.page - 1, // Angular uses 0-based index
+    pageSize:               params.pageSize,
+    sortcolumn:             'id',
+    type:                   'Field Visit',
+    totalRecords:           params.totalRecords || 0,
+    // Filters
+    account_number:         params.accountNo    || undefined,
+    customer_name:          params.customerName || undefined,
+    trustname:              params.trustName    || undefined,
+    selling_bank:           params.sellingBank  || undefined,
+    disposition:            params.disposition  || undefined,
+    source:                 params.source       || undefined,
+    zone:                   params.zone         || undefined,
+    start_disposition_date: params.startDate    || undefined,
+    end_disposition_date:   params.endDate      || undefined,
+    username:               params.username     || undefined,
+  };
 
-      const start = (params.page - 1) * params.pageSize;
-      const data  = filtered.slice(start, start + params.pageSize);
-      resolve({ data, totalCount: filtered.length });
-    }, 1200); // simulate network delay
-  });
+  // const response = await fetch(`${BASE_URL}diposition/getdisposition`, {
+  //   method:  'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body:    JSON.stringify(body),
+  // });
+
+       const response =  await Api.sendRequest( body, 'diposition/getdisposition')
+
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+
+  return {
+    data:       (data.ArrayOfResponse || []).map(mapRecord),
+    totalCount: data.TotalRecords || 0,
+  };
+};
 
 /**
- * searchAccounts — autocomplete search
- * @param {string} query
- * @returns {Promise<array>}
+ * searchAccounts — autocomplete search (account number + borrower name)
+ * Angular endpoint: POST secure_borrowerdetails/secure_borrowerdetailsData
  */
-const searchAccounts = (query) =>
-  new Promise(resolve => {
-    setTimeout(() => {
-      const q = query.toLowerCase();
-      const unique = [];
-      const seen   = new Set();
-      MOCK_DB.forEach(r => {
-        if (!seen.has(r.accountNo) && (r.accountNo.toLowerCase().includes(q) || r.borrowerName.toLowerCase().includes(q))) {
-          seen.add(r.accountNo);
-          unique.push({ id: r.accountNo, name: r.borrowerName });
-        }
-      });
-      resolve(unique);
-    }, 400);
+const searchAccounts = async query => {
+  const response = await fetch(
+    `${BASE_URL}secure_borrowerdetails/secure_borrowerdetailsData`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ accountno: query, from: 'search' }),
+    },
+  );
+
+  if (!response.ok) return [];
+  const data = await response.json();
+  const items = data.ArrayOfResponse || [];
+
+  // Deduplicate by account_no
+  const seen   = new Set();
+  const unique = [];
+  items.forEach(r => {
+    if (!seen.has(r.account_no)) {
+      seen.add(r.account_no);
+      unique.push({ id: r.account_no, name: r.customer_name });
+    }
   });
+  return unique;
+};
+
+/**
+ * fetchDropdownData — master dropdown lists
+ * Angular endpoint: GET secure_borrowerdetails/dropdowndata
+ * Returns: trustList, dispositionList, sourceList, zoneList, sellingBankList
+ */
+const fetchDropdownData = async () => {
+  try {
+    // const response = await fetch(`${BASE_URL}secure_borrowerdetails/dropdowndata`);
+        const data = await Api.get('secure_borrowerdetails/dropdowndata',{})
+    // if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // const data = await response.json();
+
+    const trustList = (data.trustlist || []).map(t => ({
+      label: t.trust_code,
+      value: t.trust_name,
+    }));
+
+    const dispositionList = (data.disposition_master || [])
+      .filter(d => d.disposition_name !== 'Site Visit')
+      .map(d => d.disposition_name);
+    dispositionList.push('Others');
+
+    const sourceList  = (data.source       || []).map(s => s.source_name);
+    const zoneList    = (data.zone_master  || []).map(z => z.zone_name);
+    const sellingBankList = [
+      ...new Set((data.trustlist || []).map(t => t.selling_bank).filter(Boolean)),
+    ];
+
+    return { trustList, dispositionList, sourceList, zoneList, sellingBankList };
+  } catch (e) {
+    console.error('fetchDropdownData error', e);
+    return {
+      trustList: [], dispositionList: [], sourceList: [],
+      zoneList: [], sellingBankList: [],
+    };
+  }
+};
+
+/**
+ * fetchUserList — combined user list (spetrumUser + LmsUser + SecureUser)
+ * Angular endpoint: POST user/getUserListLms
+ */
+const fetchUserList = async () => {
+  try {
+    // const response = await fetch(`${BASE_URL}user/getUserListLms`, {
+    //   method:  'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body:    JSON.stringify({}),
+    // });
+    const response = await Api.sendRequest({}, 'user/getUserListLms')
+    if (!response.ok) return [];
+    const data    = await response.json();
+    const combined = [
+      ...(data.spetrumUser || []),
+      ...(data.LmsUser     || []),
+      ...(data.SecureUser  || []),
+    ];
+    // Deduplicate by user_name
+    const seen   = new Set();
+    const unique = [];
+    combined.forEach(u => {
+      if (!seen.has(u.user_name)) {
+        seen.add(u.user_name);
+        unique.push(u.user_name);
+      }
+    });
+    return unique;
+  } catch (e) {
+    console.error('fetchUserList error', e);
+    return [];
+  }
+};
 
 /* ─────────────────────────────────────────────────────────────
    SKELETON CARD
@@ -193,7 +279,7 @@ function SkeletonCard() {
       </View>
       <View style={styles.skChipRow}>
         <View style={[styles.skLine, { width: 120, height: 26, borderRadius: 22 }]} />
-        <View style={[styles.skLine, { width: 90,  height: 26, borderRadius: 22, marginLeft: 8 }]} />
+        <View style={[styles.skLine, { width: 90, height: 26, borderRadius: 22, marginLeft: 8 }]} />
       </View>
       <View style={styles.skFooterRow}>
         <View style={[styles.skLine, { width: 80, height: 11 }]} />
@@ -259,9 +345,9 @@ function DispositionCard({ item, onPress }) {
    DETAIL BOTTOM SHEET
 ───────────────────────────────────────────────────────────── */
 function DetailSheet({ record, onClose }) {
-  const insets      = useSafeAreaInsets();
-  const slideAnim   = useRef(new Animated.Value(800)).current;
-  const fadeAnim    = useRef(new Animated.Value(0)).current;
+  const insets    = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(800)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -286,7 +372,9 @@ function DetailSheet({ record, onClose }) {
     ['Virtual Number',   record.virtual],
     ['Selling Bank',     record.sellingBank],
     ['Trust Name',       record.trustName],
+    ['Disposition',      record.disposition],
     ['Sub Disposition',  record.subDisposition],
+    ['Source',           record.source],
     ['Type',             record.type],
     ['Person Contacted', record.personContacted],
     ['Default Reason',   record.defaultReason],
@@ -352,8 +440,11 @@ function DetailSheet({ record, onClose }) {
 
 /* ─────────────────────────────────────────────────────────────
    FILTER BOTTOM SHEET
+   — includes all Angular filter fields:
+     Trust, Disposition, Source, Zone, Selling Bank,
+     Date range, User Type, Username, Virtual Acc, Customer Name
 ───────────────────────────────────────────────────────────── */
-function FilterSheet({ filters, onApply, onClose }) {
+function FilterSheet({ filters, dropdownData, userList, onApply, onClose }) {
   const insets    = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(800)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -394,6 +485,14 @@ function FilterSheet({ filters, onApply, onClose }) {
     </TouchableOpacity>
   );
 
+  const {
+    trustList      = [],
+    dispositionList= [],
+    sourceList     = [],
+    zoneList       = [],
+    sellingBankList= [],
+  } = dropdownData || {};
+
   return (
     <Modal transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
@@ -401,7 +500,7 @@ function FilterSheet({ filters, onApply, onClose }) {
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + 16, maxHeight: '82%', transform: [{ translateY: slideAnim }] },
+            { paddingBottom: insets.bottom + 16, maxHeight: '88%', transform: [{ translateY: slideAnim }] },
           ]}
         >
           <View style={styles.sheetHandle} />
@@ -416,48 +515,196 @@ function FilterSheet({ filters, onApply, onClose }) {
           </View>
 
           <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false}>
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionLabel}>Trust Name</Text>
-              <View style={styles.chipWrap}>
-                {['All', ...TRUST_NAMES].map(t => {
-                  const val = t === 'All' ? '' : t;
-                  return (
+
+            {/* ── Trust Name ── */}
+            {trustList.length > 0 && (
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionLabel}>Trust Name</Text>
+                <View style={styles.chipWrap}>
+                  <ChipButton label="All" active={!lf.trustName} onPress={() => s('trustName', '')} />
+                  {trustList.map(t => (
                     <ChipButton
-                      key={t}
-                      label={t}
-                      active={lf.trustName === val}
-                      onPress={() => s('trustName', val)}
+                      key={t.label || t}
+                      label={t.label || t}
+                      active={lf.trustName === (t.value || t)}
+                      onPress={() => s('trustName', lf.trustName === (t.value || t) ? '' : (t.value || t))}
                     />
-                  );
-                })}
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
+            {/* ── Disposition ── */}
+            {dispositionList.length > 0 && (
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionLabel}>Disposition</Text>
+                <View style={styles.chipWrap}>
+                  {dispositionList.map(d => {
+                    const active = lf.disposition === d;
+                    const c      = getChip(d);
+                    return (
+                      <TouchableOpacity
+                        key={d}
+                        activeOpacity={0.75}
+                        onPress={() => s('disposition', active ? '' : d)}
+                        style={[
+                          styles.filterChipBtn,
+                          active && { backgroundColor: c.bg, borderColor: c.dot },
+                        ]}
+                      >
+                        <Text style={[styles.filterChipText, active && { color: c.text, fontWeight: '700' }]}>
+                          {d}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* ── Source ── */}
+            {sourceList.length > 0 && (
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionLabel}>Source</Text>
+                <View style={styles.chipWrap}>
+                  <ChipButton label="All" active={!lf.source} onPress={() => s('source', '')} />
+                  {sourceList.map(src => (
+                    <ChipButton
+                      key={src}
+                      label={src}
+                      active={lf.source === src}
+                      onPress={() => s('source', lf.source === src ? '' : src)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Zone ── */}
+            {zoneList.length > 0 && (
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionLabel}>Zone</Text>
+                <View style={styles.chipWrap}>
+                  <ChipButton label="All" active={!lf.zone} onPress={() => s('zone', '')} />
+                  {zoneList.map(z => (
+                    <ChipButton
+                      key={z}
+                      label={z}
+                      active={lf.zone === z}
+                      onPress={() => s('zone', lf.zone === z ? '' : z)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Selling Bank ── */}
+            {sellingBankList.length > 0 && (
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionLabel}>Selling Bank</Text>
+                <View style={styles.chipWrap}>
+                  <ChipButton label="All" active={!lf.sellingBank} onPress={() => s('sellingBank', '')} />
+                  {sellingBankList.map(bank => (
+                    <ChipButton
+                      key={bank}
+                      label={bank}
+                      active={lf.sellingBank === bank}
+                      onPress={() => s('sellingBank', lf.sellingBank === bank ? '' : bank)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── User Type ── */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionLabel}>Disposition</Text>
+              <Text style={styles.filterSectionLabel}>User Type</Text>
               <View style={styles.chipWrap}>
-                {DISPOSITIONS.map(d => {
-                  const active = lf.disposition === d;
-                  const c = getChip(d);
-                  return (
-                    <TouchableOpacity
-                      key={d}
-                      activeOpacity={0.75}
-                      onPress={() => s('disposition', active ? '' : d)}
-                      style={[
-                        styles.filterChipBtn,
-                        active && { backgroundColor: c.bg, borderColor: c.dot },
-                      ]}
-                    >
-                      <Text style={[styles.filterChipText, active && { color: c.text, fontWeight: '700' }]}>
-                        {d}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {USER_TYPES.map(ut => (
+                  <ChipButton
+                    key={ut}
+                    label={ut}
+                    active={lf.userType === ut || (ut === 'All' && !lf.userType)}
+                    onPress={() => s('userType', ut === 'All' ? '' : ut)}
+                  />
+                ))}
               </View>
             </View>
 
+            {/* ── Username ── */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionLabel}>Username</Text>
+              <View style={styles.filterInputWrap}>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="Enter username…"
+                  placeholderTextColor="#94A3B8"
+                  value={lf.username}
+                  onChangeText={v => s('username', v)}
+                  autoCapitalize="none"
+                />
+              </View>
+              {/* Quick-select from userList */}
+              {userList.length > 0 && lf.username.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginTop: 8 }}
+                  contentContainerStyle={{ gap: 6 }}
+                >
+                  {userList
+                    .filter(u => u.toLowerCase().includes(lf.username.toLowerCase()))
+                    .slice(0, 8)
+                    .map(u => (
+                      <TouchableOpacity
+                        key={u}
+                        onPress={() => s('username', u)}
+                        style={[styles.filterChipBtn, lf.username === u && styles.filterChipBtnActive]}
+                      >
+                        <Text style={[styles.filterChipText, lf.username === u && styles.filterChipTextActive]}>
+                          {u}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* ── Start Date ── */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionLabel}>Start Activity Date</Text>
+              <View style={styles.filterInputWrap}>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                  value={lf.startDate}
+                  onChangeText={v => s('startDate', v)}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            {/* ── End Date ── */}
+            <View style={[styles.filterSection, { marginBottom: 8 }]}>
+              <Text style={styles.filterSectionLabel}>End Activity Date</Text>
+              <View style={[
+                styles.filterInputWrap,
+                !lf.startDate && { opacity: 0.45 },
+              ]}>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                  value={lf.endDate}
+                  onChangeText={v => s('endDate', v)}
+                  keyboardType="numeric"
+                  editable={!!lf.startDate}
+                />
+              </View>
+            </View>
+
+            {/* ── Virtual Account No ── */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionLabel}>Virtual Account No.</Text>
               <View style={styles.filterInputWrap}>
@@ -471,6 +718,7 @@ function FilterSheet({ filters, onApply, onClose }) {
               </View>
             </View>
 
+            {/* ── Customer Name ── */}
             <View style={[styles.filterSection, { marginBottom: 8 }]}>
               <Text style={styles.filterSectionLabel}>Customer Name</Text>
               <View style={styles.filterInputWrap}>
@@ -483,12 +731,19 @@ function FilterSheet({ filters, onApply, onClose }) {
                 />
               </View>
             </View>
+
           </ScrollView>
 
           <View style={styles.filterActions}>
             <TouchableOpacity
               activeOpacity={0.75}
-              onPress={() => setLf({ trustName: '', disposition: '', virtual: '', customerName: '' })}
+              onPress={() =>
+                setLf({
+                  trustName: '', disposition: '', virtual: '', customerName: '',
+                  source: '', zone: '', sellingBank: '', startDate: '',
+                  endDate: '', username: '', userType: '',
+                })
+              }
               style={styles.btnClear}
             >
               <Text style={styles.btnClearText}>Clear All</Text>
@@ -506,45 +761,84 @@ function FilterSheet({ filters, onApply, onClose }) {
 /* ─────────────────────────────────────────────────────────────
    MAIN SCREEN
 ───────────────────────────────────────────────────────────── */
-export default function DispositionHistoryScreen({ navigation }) {
+export default function DispositionHistoryScreenNew({ navigation }) {
   const insets = useSafeAreaInsets();
 
   // ── Search state
-  const [query,       setQuery]       = useState('');
-  const [ddResults,   setDdResults]   = useState([]);
-  const [ddVisible,   setDdVisible]   = useState(false);
-  const [selAcc,      setSelAcc]      = useState(null); // { id, name }
-  const searchTimer                   = useRef(null);
+  const [query,     setQuery]     = useState('');
+  const [ddResults, setDdResults] = useState([]);
+  const [ddVisible, setDdVisible] = useState(false);
+  const [selAcc,    setSelAcc]    = useState(null); // { id, name }
+  const searchTimer               = useRef(null);
 
-  // ── Filter state
-  const [filterOpen,  setFilterOpen]  = useState(false);
-  const [activeF,     setActiveF]     = useState({ trustName: '', disposition: '', virtual: '', customerName: '' });
+  // ── Filter state (extended to match Angular fields)
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [activeF,    setActiveF]    = useState({
+    trustName:   '',
+    disposition: '',
+    virtual:     '',
+    customerName:'',
+    source:      '',
+    zone:        '',
+    sellingBank: '',
+    startDate:   '',
+    endDate:     '',
+    username:    '',
+    userType:    '',
+  });
+
+  // ── Master dropdown data (from API)
+  const [dropdownData, setDropdownData] = useState({
+    trustList:      [],
+    dispositionList:[],
+    sourceList:     [],
+    zoneList:       [],
+    sellingBankList:[],
+  });
+  const [userList, setUserList] = useState([]);
 
   // ── List state
   const [records,     setRecords]     = useState([]);
   const [totalCount,  setTotalCount]  = useState(0);
   const [page,        setPage]        = useState(1);
   const [initLoading, setInitLoading] = useState(true);  // first page skeleton
-  const [moreLoading, setMoreLoading] = useState(false); // subsequent pages
+  const [moreLoading, setMoreLoading] = useState(false); // subsequent page skeleton
   const [hasMore,     setHasMore]     = useState(true);
-useLayoutEffect(() => {
-              navigation.setOptions({
-                headerShown: false,
-              });
-            }, [navigation]);
+
   // ── Detail state
-  const [selRecord,   setSelRecord]   = useState(null);
+  const [selRecord, setSelRecord] = useState(null);
+
+  // ── Hide navigation header
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // ── Load master dropdown data once on mount
+  useEffect(() => {
+    fetchDropdownData().then(setDropdownData);
+    fetchUserList().then(setUserList);
+  }, []);
 
   // ── Build API params from current filter + account
-  const buildParams = useCallback((pg) => ({
-    page:         pg,
-    pageSize:     PAGE_SIZE,
-    accountNo:    selAcc?.id      || '',
-    disposition:  activeF.disposition,
-    trustName:    activeF.trustName,
-    virtual:      activeF.virtual,
-    customerName: activeF.customerName,
-  }), [selAcc, activeF]);
+  const buildParams = useCallback(
+    (pg, currentTotalRecords = 0) => ({
+      page:          pg,
+      pageSize:      PAGE_SIZE,
+      totalRecords:  currentTotalRecords,
+      accountNo:     selAcc?.id            || '',
+      customerName:  activeF.customerName,
+      trustName:     activeF.trustName,
+      sellingBank:   activeF.sellingBank,
+      disposition:   activeF.disposition,
+      source:        activeF.source,
+      zone:          activeF.zone,
+      startDate:     activeF.startDate,
+      endDate:       activeF.endDate,
+      username:      activeF.username,
+      virtual:       activeF.virtual,
+    }),
+    [selAcc, activeF],
+  );
 
   // ── Load first page (reset list)
   const loadFirstPage = useCallback(async () => {
@@ -553,46 +847,61 @@ useLayoutEffect(() => {
     setPage(1);
     setHasMore(true);
     try {
-      const { data, totalCount: total } = await fetchDispositions(buildParams(1));
+      const { data, totalCount: total } = await fetchDispositions(buildParams(1, 0));
       setRecords(data);
       setTotalCount(total);
       setHasMore(data.length === PAGE_SIZE && total > PAGE_SIZE);
     } catch (e) {
-      console.error('fetchDispositions error', e);
+      console.error('fetchDispositions first page error', e);
     } finally {
       setInitLoading(false);
     }
   }, [buildParams]);
 
-  // ── Load next page (append to list)
+  // ── Load next page (append — triggered by onEndReached)
   const loadNextPage = useCallback(async () => {
     if (moreLoading || !hasMore || initLoading) return;
     const nextPage = page + 1;
     setMoreLoading(true);
     try {
-      const { data, totalCount: total } = await fetchDispositions(buildParams(nextPage));
-      setRecords(prev => [...prev, ...data]);
+      const { data, totalCount: total } = await fetchDispositions(
+        buildParams(nextPage, totalCount),
+      );
+      setRecords(prev => {
+        const merged = [...prev, ...data];
+        setHasMore(merged.length < total);
+        return merged;
+      });
       setTotalCount(total);
       setPage(nextPage);
-      setHasMore(records.length + data.length < total);
     } catch (e) {
-      console.error('loadNextPage error', e);
+      console.error('fetchDispositions next page error', e);
     } finally {
       setMoreLoading(false);
     }
-  }, [moreLoading, hasMore, initLoading, page, buildParams, records.length]);
+  }, [moreLoading, hasMore, initLoading, page, buildParams, totalCount]);
 
-  // ── Reload whenever filters or account changes
-  useEffect(() => { loadFirstPage(); }, [selAcc, activeF]);
-
-  // ── Account search autocomplete
+  // ── Reload whenever filters or account selection changes
   useEffect(() => {
-    if (query.length < 3) { setDdResults([]); setDdVisible(false); return; }
+    loadFirstPage();
+  }, [selAcc, activeF]);
+
+  // ── Account search autocomplete (debounced 400ms, min 3 chars)
+  useEffect(() => {
+    if (query.length < 3) {
+      setDdResults([]);
+      setDdVisible(false);
+      return;
+    }
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(async () => {
-      const results = await searchAccounts(query);
-      setDdResults(results);
-      setDdVisible(results.length > 0);
+      try {
+        const results = await searchAccounts(query);
+        setDdResults(results);
+        setDdVisible(results.length > 0);
+      } catch (e) {
+        console.error('searchAccounts error', e);
+      }
     }, 400);
     return () => clearTimeout(searchTimer.current);
   }, [query]);
@@ -613,17 +922,23 @@ useLayoutEffect(() => {
     setActiveF(prev => ({ ...prev, [key]: '' }));
   };
 
-  const activeCnt = Object.values(activeF).filter(Boolean).length + (selAcc ? 1 : 0);
+  // Count of active filters (for badge on filter button)
+  const activeCnt =
+    Object.values(activeF).filter(Boolean).length + (selAcc ? 1 : 0);
 
-  // ── Summary counts for header strip
+  // ── Summary counts for header strip (computed from loaded records)
   const dispSummary = useMemo(() => {
     const counts = {};
-    DISPOSITIONS.forEach(d => { counts[d] = 0; });
-    MOCK_DB.forEach(r => { if (counts[r.disposition] !== undefined) counts[r.disposition]++; });
+    records.forEach(r => {
+      if (r.disposition && r.disposition !== '—') {
+        counts[r.disposition] = (counts[r.disposition] || 0) + 1;
+      }
+    });
     return Object.entries(counts).slice(0, 4);
-  }, []);
+  }, [records]);
 
-  // ── Render footer (pagination loader or end message)
+  /* ── Render footer: skeleton cards while loading next page,
+        or "all records loaded" end-of-list message ── */
   const renderFooter = () => {
     if (initLoading) return null;
     if (moreLoading) {
@@ -645,7 +960,7 @@ useLayoutEffect(() => {
     return null;
   };
 
-  // ── Render list header (skeletons on init OR actual count bar)
+  /* ── Render list header: skeleton cards on first load, or count bar ── */
   const renderListHeader = () => {
     if (initLoading) {
       return (
@@ -660,7 +975,6 @@ useLayoutEffect(() => {
           {totalCount} Record{totalCount !== 1 ? 's' : ''}
           {selAcc ? `  ·  ${selAcc.name}` : '  ·  All Accounts'}
         </Text>
-        <Text style={styles.resultMetaDate}>15 Oct 2024</Text>
       </View>
     );
   };
@@ -684,30 +998,34 @@ useLayoutEffect(() => {
             <Text style={styles.backArrow}>‹</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerSub}>Recovery App</Text>
+            {/* <Text style={styles.headerSub}>Recovery App</Text> */}
             <Text style={styles.headerTitle}>Disposition History</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.headerTotalLabel}>TOTAL</Text>
-            <Text style={styles.headerTotalNum}>{MOCK_DB.length}</Text>
+            <Text style={styles.headerTotalNum}>
+              {initLoading ? '…' : totalCount}
+            </Text>
           </View>
         </View>
 
-        {/* Summary strip */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.summaryStrip}
-        >
-          {dispSummary.map(([disp, cnt]) => (
-            <View key={disp} style={styles.summaryCard}>
-              <Text style={styles.summaryCardLabel} numberOfLines={1}>
-                {disp.split(' ')[0]}
-              </Text>
-              <Text style={styles.summaryCardCount}>{cnt}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        {/* Summary strip — disposition breakdown from loaded records */}
+        {/* {dispSummary.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.summaryStrip}
+          >
+            {dispSummary.map(([disp, cnt]) => (
+              <View key={disp} style={styles.summaryCard}>
+                <Text style={styles.summaryCardLabel} numberOfLines={1}>
+                  {disp.split(' ')[0]}
+                </Text>
+                <Text style={styles.summaryCardCount}>{cnt}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )} */}
       </View>
 
       {/* ── Body ── */}
@@ -802,7 +1120,7 @@ useLayoutEffect(() => {
           </ScrollView>
         )}
 
-        {/* List */}
+        {/* Main list with infinite scroll */}
         <FlatList
           data={initLoading ? [] : records}
           keyExtractor={item => String(item.id)}
@@ -811,6 +1129,7 @@ useLayoutEffect(() => {
           )}
           ListHeaderComponent={renderListHeader}
           ListFooterComponent={renderFooter}
+          /* ── Infinite scroll: fires when user is 30% from bottom ── */
           onEndReached={loadNextPage}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
@@ -834,6 +1153,8 @@ useLayoutEffect(() => {
       {filterOpen && (
         <FilterSheet
           filters={activeF}
+          dropdownData={dropdownData}
+          userList={userList}
           onApply={lf => setActiveF({ ...lf })}
           onClose={() => setFilterOpen(false)}
         />
@@ -849,7 +1170,7 @@ useLayoutEffect(() => {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   STYLES
+   STYLES  (unchanged from original design)
 ───────────────────────────────────────────────────────────── */
 const C = {
   navy:      '#0D3B86',
@@ -995,7 +1316,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.white,
     borderRadius: 16,
     paddingHorizontal: 14,
-    // paddingVertical: 10,
     gap: 8,
     borderWidth: 1.5,
     borderColor: C.border,
@@ -1052,19 +1372,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: C.blue,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  filterBtnIcon: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  filterBtnIcon: { color: '#fff', fontSize: 22, fontWeight: '700' },
   filterBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -5,
+    right: -5,
+    backgroundColor: '#EF4444',
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: C.gold,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -1074,43 +1394,38 @@ const styles = StyleSheet.create({
 
   /* ── Dropdown ── */
   dropdown: {
-    position: 'absolute',
-    top: 74,
-    left: 14,
-    right: 72,
     backgroundColor: C.white,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: C.border,
+    marginBottom: 10,
+    zIndex: 10,
     shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    elevation: 12,
-    zIndex: 100,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 6,
     overflow: 'hidden',
   },
   ddHeading: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: C.textMute,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 6,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
   ddItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     gap: 10,
   },
-  ddItemBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
+  ddItemBorder: { borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   ddIconWrap: {
     width: 34,
     height: 34,
@@ -1120,70 +1435,75 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ddItemIcon: { fontSize: 15 },
-  ddAccNo: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: C.blue,
-    marginBottom: 1,
-    letterSpacing: 0.2,
-  },
-  ddAccName: { fontSize: 12, color: C.textMid, fontWeight: '600' },
-  ddChevron: { color: C.border, fontSize: 18, fontWeight: '600' },
+  ddAccNo: { fontSize: 11, fontWeight: '700', color: C.blue },
+  ddAccName: { fontSize: 12, color: C.textSub, fontWeight: '500', marginTop: 1 },
+  ddChevron: { color: C.textMute, fontSize: 18 },
 
   /* ── Active filter chips ── */
   activeChipsRow: {
-    gap: 7,
+    flexDirection: 'row',
+    gap: 6,
     paddingBottom: 10,
-    paddingRight: 4,
   },
   activeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    borderRadius: 22,
-    paddingLeft: 10,
-    paddingRight: 6,
-    paddingVertical: 5,
-    borderWidth: 1.5,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
     borderColor: '#BFDBFE',
-    gap: 4,
-    maxWidth: 180,
+    borderRadius: 22,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 5,
+    maxWidth: 160,
   },
-  activeChipText: { fontSize: 11, fontWeight: '700', color: '#1D4ED8' },
-  activeChipX: { fontSize: 14, fontWeight: '800', color: '#1D4ED8', lineHeight: 16 },
+  activeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1D4ED8',
+    flex: 1,
+  },
+  activeChipX: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#93C5FD',
+    lineHeight: 16,
+  },
 
-  /* ── Result meta ── */
+  /* ── Result meta bar ── */
   resultMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+    paddingHorizontal: 2,
   },
   resultMetaText: {
     fontSize: 11,
     fontWeight: '700',
-    color: C.textMute,
+    color: C.textSub,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  resultMetaDate: { fontSize: 11, color: C.textMute, fontWeight: '600' },
+  resultMetaDate: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textMute,
+  },
 
   /* ── Card ── */
   card: {
     backgroundColor: C.white,
     borderRadius: 18,
-    paddingTop: 14,
-    paddingHorizontal: 14,
-    paddingBottom: 12,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: C.border,
-    shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
     overflow: 'hidden',
+    shadowColor: C.navy,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+    padding: 14,
+    paddingTop: 18,
   },
   cardStrip: {
     position: 'absolute',
@@ -1195,15 +1515,14 @@ const styles = StyleSheet.create({
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 9,
+    marginBottom: 10,
   },
   cardAccNo: {
     fontSize: 11,
     fontWeight: '700',
     color: C.blue,
-    marginBottom: 3,
     letterSpacing: 0.2,
+    marginBottom: 3,
   },
   cardBorrower: {
     fontSize: 15,
@@ -1211,49 +1530,56 @@ const styles = StyleSheet.create({
     color: C.text,
     letterSpacing: -0.2,
   },
-  cardDate: { fontSize: 12, fontWeight: '600', color: C.textMid },
-  cardTime: { fontSize: 11, color: C.textMute, marginTop: 2, textAlign: 'right' },
+  cardDate: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textSub,
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  cardTime: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: C.textMute,
+    textAlign: 'right',
+  },
   chipsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
+    gap: 6,
     marginBottom: 10,
     flexWrap: 'wrap',
   },
   dispChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 22,
     gap: 5,
-  },
-  dot: { width: 7, height: 7, borderRadius: 3.5 },
-  dispChipText: { fontSize: 12, fontWeight: '700' },
-  typeChip: {
-    backgroundColor: '#F8FAFC',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 22,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dispChipText: { fontSize: 11, fontWeight: '700' },
+  typeChip: {
+    backgroundColor: '#F8FAFD',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: C.border,
+    borderRadius: 22,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   typeChipText: { fontSize: 11, fontWeight: '600', color: C.textSub },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 9,
   },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaIcon: { fontSize: 11 },
-  metaText: { fontSize: 11, color: C.textMute, fontWeight: '500' },
-  metaDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 2,
-  },
+  metaIcon: { fontSize: 12 },
+  metaText: { fontSize: 11, fontWeight: '600', color: C.textSub },
+  metaDivider: { width: 1, height: 12, backgroundColor: C.border },
   trustBadge: {
     fontSize: 10,
     fontWeight: '700',
@@ -1462,6 +1788,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: C.text,
     fontWeight: '500',
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
   },
   filterActions: {
     flexDirection: 'row',

@@ -58,141 +58,7 @@ const API_MAP = {
   restructuring:  '/api/restructuring-balances',
 };
 
-// ─── MOCK DATA (used as fallback / for preview) ───────────────────────────────
-const MOCK_DATA = {
-  financial: {
-    type: 'grid',
-    fields: [
-      { label: 'Outstanding Balance', value: '₹2,45,000.00', highlight: true },
-      { label: 'Principal Amount',    value: '₹3,00,000.00' },
-      { label: 'Interest Accrued',    value: '₹12,450.00' },
-      { label: 'Loan Status',         value: 'Active',      badge: 'green' },
-      { label: 'Maturity Date',       value: '09-03-2028' },
-      { label: 'ROI',                 value: '12.5% p.a.' },
-    ],
-  },
-  customer: {
-    type: 'cards',
-    cards: [
-      {
-        cardTitle: 'Account 1',
-        fields: [
-          { label: 'Account No.',  value: 'LOAN-00123456' },
-          { label: 'Account Type', value: 'Home Loan' },
-          { label: 'Branch',       value: 'MG Road, Bangalore' },
-          { label: 'Status',       value: 'Active', badge: 'green' },
-        ],
-      },
-      {
-        cardTitle: 'Account 2',
-        fields: [
-          { label: 'Account No.',  value: 'LOAN-00789012' },
-          { label: 'Account Type', value: 'Personal Loan' },
-          { label: 'Branch',       value: 'Koramangala' },
-          { label: 'Status',       value: 'Active', badge: 'green' },
-        ],
-      },
-      {
-        cardTitle: 'Account 3',
-        fields: [
-          { label: 'Account No.',  value: 'LOAN-00345678' },
-          { label: 'Account Type', value: 'Car Loan' },
-          { label: 'Branch',       value: 'Whitefield' },
-          { label: 'Status',       value: 'Closed', badge: 'grey' },
-        ],
-      },
-    ],
-  },
-  collateral: {
-    type: 'cards',
-    cards: [
-      {
-        cardTitle: 'Collateral 1 — Property',
-        fields: [
-          { label: 'Type',         value: 'Immovable Property' },
-          { label: 'Value',        value: '₹45,00,000.00', highlight: true },
-          { label: 'Address',      value: '123, MG Road, Bangalore' },
-          { label: 'Doc Status',   value: 'Verified', badge: 'green' },
-        ],
-      },
-      {
-        cardTitle: 'Collateral 2 — Vehicle',
-        fields: [
-          { label: 'Type',        value: 'Vehicle' },
-          { label: 'Value',       value: '₹8,50,000.00', highlight: true },
-          { label: 'Vehicle No.', value: 'KA-01-AB-1234' },
-          { label: 'Doc Status',  value: 'Pending', badge: 'blue' },
-        ],
-      },
-      {
-        cardTitle: 'Collateral 3 — FD',
-        fields: [
-          { label: 'Type',       value: 'Fixed Deposit' },
-          { label: 'FD Amount',  value: '₹5,00,000.00', highlight: true },
-          { label: 'FD Number',  value: 'FD-9900234' },
-          { label: 'Doc Status', value: 'Verified', badge: 'green' },
-        ],
-      },
-    ],
-  },
-  payment: {
-    type: 'cards',
-    cards: [
-      {
-        cardTitle: 'Receipt — Feb 2026',
-        fields: [
-          { label: 'Payment Mode',  value: 'Monthly' },
-          { label: 'Amount Paid',   value: '₹909.00', highlight: true },
-          { label: 'Paid Date',     value: '09-02-2026' },
-          { label: 'Auto Debit',    value: 'Active',   badge: 'green' },
-          { label: 'Account No.',   value: '0000000000007004' },
-          { label: 'Next Due Date', value: '09-03-2026' },
-        ],
-      },
-      {
-        cardTitle: 'Receipt — Jan 2026',
-        fields: [
-          { label: 'Payment Mode',   value: 'Monthly' },
-          { label: 'Amount Paid',    value: '₹909.00', highlight: true },
-          { label: 'Paid Date',      value: '09-01-2026' },
-          { label: 'Auto Debit',     value: 'Active',  badge: 'green' },
-          { label: 'Account No.',    value: '0000000000007004' },
-          { label: 'Transaction ID', value: 'TXN2026010923' },
-        ],
-      },
-      {
-        cardTitle: 'Receipt — Dec 2025',
-        fields: [
-          { label: 'Payment Mode',   value: 'Monthly' },
-          { label: 'Amount Paid',    value: '₹909.00', highlight: true },
-          { label: 'Paid Date',      value: '09-12-2025' },
-          { label: 'Auto Debit',     value: 'Active',  badge: 'green' },
-          { label: 'Account No.',    value: '0000000000007004' },
-          { label: 'Transaction ID', value: 'TXN2025120918' },
-        ],
-      },
-    ],
-  },
-  settlement: {
-    type: 'grid',
-    fields: [
-      { label: 'Settlement Amount', value: '₹1,85,000.00', highlight: true },
-      { label: 'Waiver Amount',     value: '₹15,000.00' },
-      { label: 'Settlement Date',   value: '15-03-2026' },
-      { label: 'Status',            value: 'Pending', badge: 'blue' },
-    ],
-  },
-  restructuring: {
-    type: 'grid',
-    fields: [
-      { label: 'Restructured Amount', value: '₹2,10,000.00', highlight: true },
-      { label: 'New EMI',             value: '₹8,500.00' },
-      { label: 'Revised Tenure',      value: '36 Months' },
-      { label: 'Restructure Date',    value: '01-01-2025' },
-    ],
-  },
-};
-
+ 
 // ─── SECTION CONFIG ───────────────────────────────────────────────────────────
 const SECTIONS = [
   { id: 'financial',     title: 'Financial View',                   icon: 'shield-check' ,viewType:'Financial View', type:'grid' },
@@ -420,32 +286,89 @@ const AccordionItem = ({ section,loanNumber }) => {
   );
 };
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
-const AccountDetailsScreen = ({ navigation,route }) => {
+const AccountDetailsScreenNew = ({ navigation,route }) => {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      {/* Top Nav */}
+      {/* ── Header — Option B hero ───────────────────────────────────────── */}
       <View style={styles.navbar}>
-        <TouchableOpacity
-          onPress={() => navigation?.goBack()}
-          style={styles.backBtn}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.navTitle}>Account Details</Text>
-          <Text style={styles.navSubtitle}>Account Number:  {route.params.account_no}</Text>
+        {/* decorative circles */}
+        <View style={styles.hdrCircle1} />
+        <View style={styles.hdrCircle2} />
 
+        {/* nav row: back + title */}
+        <View style={styles.navRow}>
+          <TouchableOpacity
+            onPress={() => navigation?.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.8}
+          >
+            <Icon name="arrow-left" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>Account Details</Text>
+        </View>
+
+        {/* Big account number hero */}
+        <View style={styles.accHero}>
+          <Text style={styles.accHeroLbl}>Account Number</Text>
+          <Text style={styles.accHeroNo} numberOfLines={1}>
+            {route.params?.account_no ?? '—'}
+          </Text>
+        </View>
+
+        {/* Customer name · Bank name */}
+        <View style={styles.custRow}>
+          <View style={styles.custDot} />
+          <Text style={styles.custName} numberOfLines={1}>
+            {route.params?.customer_name ?? '—'}
+          </Text>
+          {route.params?.bank_name ? (
+            <>
+              <View style={styles.custSep} />
+              <Text style={styles.custBank} numberOfLines={1}>
+                {route.params.bank_name}
+              </Text>
+            </>
+          ) : null}
+        </View>
+
+        {/* Inline colour badges: Overdue · Trust · TOS · Zone */}
+        <View style={styles.badgeStrip}>
+          {route.params?.over_dues ? (
+            <View style={[styles.infoBadge, styles.badgeRed]}>
+              <Text style={[styles.infoBadgeLbl, styles.badgeRedLbl]}>Overdue</Text>
+              <Text style={[styles.infoBadgeVal, styles.badgeRedVal]}>
+                ₹{route.params.over_dues}
+              </Text>
+            </View>
+          ) : null}
+          {route.params?.trust ? (
+            <View style={[styles.infoBadge, styles.badgeWhite]}>
+              <Text style={[styles.infoBadgeLbl, styles.badgeWhiteLbl]}>Trust</Text>
+              <Text style={[styles.infoBadgeVal, styles.badgeWhiteVal]}>
+                {route.params.trust}
+              </Text>
+            </View>
+          ) : null}
+          {route.params?.tos_as_on_date ? (
+            <View style={[styles.infoBadge, styles.badgeGreen]}>
+              <Text style={[styles.infoBadgeLbl, styles.badgeGreenLbl]}>TOS</Text>
+              <Text style={[styles.infoBadgeVal, styles.badgeGreenVal]}>
+                ₹{route.params.tos_as_on_date}
+              </Text>
+            </View>
+          ) : null}
+          {route.params?.zone ? (
+            <View style={[styles.infoBadge, styles.badgeNeutral]}>
+              <Text style={[styles.infoBadgeLbl, styles.badgeNeutralLbl]}>Zone</Text>
+              <Text style={[styles.infoBadgeVal, styles.badgeNeutralVal]}>
+                {route.params.zone}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
-
-{/* 
-      <Appbar.Header style={styles.header}>
-              <Appbar.BackAction onPress={() => navigation?.goBack()} color={COLORS.primary} />
-              <Appbar.Content title="Account Details" titleStyle={styles.headerTitle} />
-               
-            </Appbar.Header> */}
 
       {/* Sections */}
       <ScrollView
@@ -468,39 +391,111 @@ const styles = StyleSheet.create({
     backgroundColor: T.primary,
   },
 
-  // ── Navbar ──
+  // ── Header — Option B (account hero + inline badges) ────────────────────────
   navbar: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingTop: 15,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'android' ? 20 : 30,
+    paddingBottom: 20,
+    paddingHorizontal: 18,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  hdrCircle1: {
+    position: 'absolute', bottom: -50, right: -50,
+    width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  hdrCircle2: {
+    position: 'absolute', top: -20, right: 40,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(37,99,235,0.40)',
+  },
+
+  // nav row
+  navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
+    marginBottom: 20,
   },
   backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    color: '#fff',
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  navSubtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    marginBottom: 2,
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
+    alignItems: 'center', justifyContent: 'center',
   },
   navTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
+    flex: 1, color: '#fff', fontSize: 17, fontWeight: '700',
   },
+
+  // account number hero
+  accHero: { marginBottom: 8 },
+  accHeroLbl: {
+    color: 'rgba(255,255,255,0.40)', fontSize: 9, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4,
+  },
+  accHeroNo: {
+    color: '#fff', fontSize: 22, fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    letterSpacing: 1, lineHeight: 26,
+  },
+
+  // customer + bank row
+  custRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 6, marginBottom: 16, flexWrap: 'wrap',
+  },
+  custDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.35)', flexShrink: 0,
+  },
+  custName: {
+    color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '500',
+  },
+  custSep: {
+    width: 1, height: 12,
+    backgroundColor: 'rgba(255,255,255,0.22)', marginHorizontal: 2,
+  },
+  custBank: {
+    color: 'rgba(255,255,255,0.40)', fontSize: 11, fontWeight: '400', flexShrink: 1,
+  },
+
+  // badge strip
+  badgeStrip: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 7,
+  },
+  infoBadge: {
+    borderRadius: 9, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1,
+  },
+  infoBadgeLbl: {
+    fontSize: 8.5, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  infoBadgeVal: {
+    fontSize: 11.5, fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    marginTop: 3,
+  },
+  // red — Overdue
+  badgeRed:        { backgroundColor: 'rgba(239,68,68,0.15)',   borderColor: 'rgba(239,68,68,0.25)' },
+  badgeRedLbl:     { color: 'rgba(252,165,165,0.80)' },
+  badgeRedVal:     { color: '#FCA5A5' },
+  // white/neutral — Trust
+  badgeWhite:      { backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.18)' },
+  badgeWhiteLbl:   { color: 'rgba(255,255,255,0.45)' },
+  badgeWhiteVal:   { color: '#fff' },
+  // green — TOS
+  badgeGreen:      { backgroundColor: 'rgba(16,185,129,0.14)',  borderColor: 'rgba(16,185,129,0.22)' },
+  badgeGreenLbl:   { color: 'rgba(110,231,183,0.75)' },
+  badgeGreenVal:   { color: '#6EE7B7' },
+  // neutral — Zone
+  badgeNeutral:    { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.14)' },
+  badgeNeutralLbl: { color: 'rgba(255,255,255,0.40)' },
+  badgeNeutralVal: { color: 'rgba(255,255,255,0.70)' },
+
+  // ── kept for backward compat (unused but safe) ────────────────────────────
+  backIcon: {},
+  navSubtitle: {},
 
   // ── Scroll ──
   scroll: {
@@ -738,4 +733,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AccountDetailsScreen;
+export default AccountDetailsScreenNew;

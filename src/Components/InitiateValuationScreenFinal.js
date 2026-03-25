@@ -34,10 +34,10 @@ import {
   StyleSheet
 } from 'react-native';
 import { InitialLoader, SubmitLoader } from './ValuationLoaders';
-import Api from "../Utilities/apiService"
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../theme/theme';
- 
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Api from "../Utilities/apiService";
+
 
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
@@ -72,8 +72,8 @@ const STATUS_MAP = {
   '5': 'Cancelled at Draft Stage',
   '6': 'Cancelled at Request Stage',
 };
-const CAN_REINITIATE = ['2', '3', '4', '5', '6'];
-const IN_PROCESS     = ['1'];
+const CAN_REINITIATE = [2, 3, 4, 5, 6];
+const IN_PROCESS     = [1];
 
 const getStatusStyle = (status) => {
   if (!status)                   return { bg: '#ECFDF5', border: '#6EE7B7', color: '#10B981', label: 'AVAILABLE' };
@@ -83,103 +83,11 @@ const getStatusStyle = (status) => {
   return { bg: '#FFFBEB', border: '#FCD34D', color: '#92400E', label: STATUS_MAP[status] };
 };
 
-// ─── MOCK API (replace with route.params.apiData) ─────────────────────────────
-const MOCK_API = {
-  result: [
-    {
-      lms_last_status: 'Yes', construction_status: null, negative_factor_freetext: null,
-      positive_factor_freetext: null, priority_status: null, structural_soundness: null,
-      positive_factor: null, negative_factor: null, valuation_for: null, tvpstatus: null,
-      date_of_visit: null, valuation_type: null, is_trash: null, contact_number: null,
-      contact_person_email: null, contact_person_name: null, account_qnq_id: '85441',
-      customername: 'Aarti Agrawal', accountno: '00800012367', status: null,
-      assetcodes: 'H77_162902_MLMP_3/4',
-      collateraladdress: 'FLAT NO. 202, PLOT NO. B-19 S.S. ENCLAVE, BLOCK-A, SECOND FLOOR SAMARTHA PARK COLONY, MHOW, INDORE-453441',
-      trust: 'EARC Trust SC 477', trust_code: 'H77',
-    },
-    {
-      lms_last_status: 'Yes', construction_status: 'Complete', negative_factor_freetext: null,
-      positive_factor_freetext: null, priority_status: 'Priority1', structural_soundness: 'Average',
-      positive_factor: ['Structural soundness or Infrastructure Development'],
-      negative_factor: ['Narrow approach road or Kaccha Road or high voltage line passing'],
-      valuation_for: 'Settlement', tvpstatus: null, date_of_visit: '2024-06-27',
-      valuation_type: 'Desktop Valuation', is_trash: null, contact_number: '9078675656',
-      contact_person_email: 'test@exponetia.in', contact_person_name: 'test',
-      account_qnq_id: '85441', customername: 'Aarti Agrawal', accountno: '00800012367',
-      status: '1',
-      assetcodes: 'H77_162902_MLMP_2/3',
-      collateraladdress: 'SHOP NO. 3, GROUND FLOOR, COMMERCIAL COMPLEX, ANNA NAGAR, CHENNAI – 600040',
-      trust: 'EARC Trust SC 477', trust_code: 'H77',
-    },
-    {
-      lms_last_status: 'Yes', construction_status: 'Complete', negative_factor_freetext: null,
-      positive_factor_freetext: null, priority_status: 'Priority2', structural_soundness: 'Poor',
-      positive_factor: ['Posh area or Market Demand or Retail Trends and Growth Potential'],
-      negative_factor: ['Vastu related issues'],
-      valuation_for: 'Auction', tvpstatus: null, date_of_visit: '2024-03-10',
-      valuation_type: 'Internal', is_trash: null, contact_number: '9900112233',
-      contact_person_email: 'narendra@exponetia.in', contact_person_name: 'Narendra',
-      account_qnq_id: '85441', customername: 'Aarti Agrawal', accountno: '00800012367',
-      status: '4',
-      assetcodes: 'H77_162902_MLMP_1/1',
-      collateraladdress: 'PLOT NO. 14, SECTOR 7, PORUR, CHENNAI – 600116',
-      trust: 'EARC Trust SC 477', trust_code: 'H77',
-    },
-    {
-      lms_last_status: 'Yes', construction_status: null, negative_factor_freetext: null,
-      positive_factor_freetext: null, priority_status: null, structural_soundness: null,
-      positive_factor: null, negative_factor: null, valuation_for: null, tvpstatus: null,
-      date_of_visit: null, valuation_type: null, is_trash: null, contact_number: null,
-      contact_person_email: null, contact_person_name: null,
-      account_qnq_id: '85441', customername: 'Aarti Agrawal', accountno: '00800012367',
-      status: '2',
-      assetcodes: 'H77_162902_MLMP_5/5',
-      collateraladdress: 'HOUSE NO. 88, WEST PATEL NAGAR, NEW DELHI – 110008',
-      trust: 'EARC Trust SC 477', trust_code: 'H77',
-    },
-  ],
-  valuationcommon: {
-    valuation_type: [
-      { name: 'Internal',          value: 'Internal' },
-      { name: 'External',          value: 'External' },
-      { name: 'Desktop Valuation', value: 'Desktop Valuation' },
-    ],
-    valuation_for:   ['Settlement', 'Auction', 'Re-Valuation'],
-    priority_status: ['Priority1', 'Priority2', 'Priority3'],
-    structural_soundness: [
-      { name: 'Average',   value: 'Average' },
-      { name: 'Very good', value: 'Very good' },
-      { name: 'Poor',      value: 'Poor' },
-    ],
-    construction_status: [
-      { name: 'Incomplete Construction - On hold',   value: 'Incomplete Construction - On hold from long and no scope of construction in the near future' },
-      { name: 'Incomplete Construction - Ongoing',   value: 'Incomplete Construction - Construction work is ongoing' },
-      { name: 'Complete',       value: 'Complete' },
-      { name: 'No Construction', value: 'No Construction' },
-    ],
-    positive_factors: [
-      { name: 'Proximity to basic amenities, Market, School, hospital, bus stop, Local transportation', value: 'Proximity to basic amenities, Market, School, hospital, bus stop, Local transportation' },
-      { name: 'Structural soundness or Infrastructure Development',                                      value: 'Structural soundness or Infrastructure Development' },
-      { name: 'Posh area or Market Demand or Retail Trends and Growth Potential',                        value: 'Posh area or Market Demand or Retail Trends and Growth Potential' },
-    ],
-    negative_factors: [
-      { name: 'Narrow approach road or Kaccha Road or high voltage line passing',                             value: 'Narrow approach road or Kaccha Road or high voltage line passing' },
-      { name: 'Average structural soundness or Leakage or Repairs required or Improper Drainage system',     value: 'Average structural soundness or Leakage or Repairs required or Improper Drainage system' },
-      { name: 'Negative area/Community dominated area or religious area',                                     value: 'Negative area/Community dominated area or religious area' },
-      { name: 'Basic amenities not available such as parking, lift, securities etc',                          value: 'Basic amenities not available such as parking, lift, securities etc' },
-      { name: 'Scarcity of water or electricity supply',                                                      value: 'Scarcity of water or electricity supply' },
-      { name: 'Near Graveyard or Sewage Canals or Liquor Shop or Red light area',                            value: 'Near Graveyard or Sewage Canals or Liquor Shop or Red light area' },
-      { name: 'Vastu related issues',                                                                         value: 'Vastu related issues' },
-      { name: 'No direct access to property or Less occupancy or Weak Market Demand',                        value: 'No direct access to property or Less occupancy or Weak Market Demand' },
-      { name: 'Water Logging / Low lying area / Situated at below road level',                               value: 'Water Logging / Low lying area / Situated at below road level' },
-      { name: 'Encumbrance if any (Challenges in registration of property)',                                  value: 'Encumbrance if any (Challenges in registration of property)' },
-    ],
-  },
-};
+ 
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const STEPS      = ['Contact', 'Valuation', 'Assessment', 'Factors'];
-const DOMAIN     = '@exponetia.in';
+const DOMAIN     = '@edelweissarc.in';
 
 const STEP_FIELDS = [
   ['contact_person_name', 'contact_person_email', 'contact_number', 'date_of_visit'],
@@ -213,6 +121,114 @@ const VALIDATORS = {
 };
 
 const normalize = (opts) => opts.map((o) => (typeof o === 'string' ? { name: o, value: o } : o));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SCREEN — NO DATA FOUND
+//  Shown when API returns success but result array is empty for this loan
+// ═══════════════════════════════════════════════════════════════════════════════
+const NoDataScreen = ({ accountno, onGoBack }) => (
+  <ScrollView contentContainerStyle={nd.container} showsVerticalScrollIndicator={false}>
+    {/* Illustration */}
+    <View style={nd.illustrationWrap}>
+      <View style={nd.outerRing} />
+      <View style={nd.middleRing} />
+      <View style={nd.iconCircle}>
+        <Text style={nd.iconEmoji}>🏚️</Text>
+      </View>
+    </View>
+
+    {/* Badge */}
+    <View style={nd.badge}>
+      <View style={nd.badgeDot} />
+      <Text style={nd.badgeText}>NO RECORDS FOUND</Text>
+    </View>
+
+    <Text style={nd.heading}>No Assets Found</Text>
+    <Text style={nd.subtext}>
+      There are no collateral assets linked to this loan account.
+    </Text>
+
+    {/* Loan chip */}
+    <View style={nd.loanChip}>
+      <Text style={nd.loanChipLabel}>LOAN NO</Text>
+      <Text style={nd.loanChipValue}>{accountno || '—'}</Text>
+    </View>
+
+    <Text style={[nd.subtext, { marginBottom: 24 }]}>
+      Please verify the loan number or contact your administrator.
+    </Text>
+
+    {/* Info box */}
+    <View style={nd.infoBox}>
+      <Text style={nd.infoIcon}>💡</Text>
+      <Text style={nd.infoText}>
+        Assets are linked via the LMS system. If this loan was recently onboarded, data may take up to 24 hours to sync.
+      </Text>
+    </View>
+
+    <TouchableOpacity style={nd.backBtn} onPress={onGoBack} activeOpacity={0.85}>
+      <Text style={nd.backBtnText}>← Go Back</Text>
+    </TouchableOpacity>
+  </ScrollView>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SCREEN — API ERROR / FETCH FAILURE
+//  Shown when the fetch API call throws or returns a server error
+// ═══════════════════════════════════════════════════════════════════════════════
+const ApiErrorScreen = ({ errorMessage, onRetry, onGoBack }) => (
+  <ScrollView contentContainerStyle={ae.container} showsVerticalScrollIndicator={false}>
+    {/* Illustration */}
+    <View style={ae.illustrationWrap}>
+      <View style={[ae.ring, { width: 110, height: 110, borderRadius: 55, backgroundColor: '#FEF2F2' }]} />
+      <View style={[ae.ring, { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FEE2E2', position: 'absolute' }]} />
+      <View style={ae.iconCircle}>
+        <Text style={ae.iconEmoji}>⚠️</Text>
+      </View>
+    </View>
+
+    {/* Badge */}
+    <View style={ae.badge}>
+      <View style={ae.badgeDot} />
+      <Text style={ae.badgeText}>CONNECTION ERROR</Text>
+    </View>
+
+    <Text style={ae.heading}>Something Went Wrong</Text>
+    <Text style={ae.subtext}>
+      We couldn't load the valuation data. Please check your connection and try again.
+    </Text>
+
+    {/* Error detail box */}
+    {!!errorMessage && (
+      <View style={ae.errorBox}>
+        <Text style={ae.errorBoxLabel}>ERROR DETAILS</Text>
+        <Text style={ae.errorBoxText} numberOfLines={3}>{errorMessage}</Text>
+      </View>
+    )}
+
+    {/* Tips */}
+    <View style={ae.tipsBox}>
+      {[
+        'Check your internet connection',
+        'Try switching between Wi-Fi and mobile data',
+        'If the issue persists, contact support',
+      ].map((tip, i) => (
+        <View key={i} style={ae.tipRow}>
+          <View style={ae.tipDot} />
+          <Text style={ae.tipText}>{tip}</Text>
+        </View>
+      ))}
+    </View>
+
+    <TouchableOpacity style={ae.retryBtn} onPress={onRetry} activeOpacity={0.85}>
+      <Text style={ae.retryBtnText}>🔄  Try Again</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity style={ae.goBackBtn} onPress={onGoBack} activeOpacity={0.8}>
+      <Text style={ae.goBackBtnText}>← Go Back</Text>
+    </TouchableOpacity>
+  </ScrollView>
+);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  BOTTOM SHEET — SINGLE SELECT
@@ -610,27 +626,50 @@ const AssetSelectionScreen = ({ apiData, onProceed }) => {
     }
     if (IN_PROCESS.includes(s)) { setInProcAsset(asset);  return; }
     if (CAN_REINITIATE.includes(s)) { setConfirmAsset(asset); return; }
+    console.log('Tapped asset', asset.assetcodes, { status: s, selected, inProcAsset, confirmAsset },
+      CAN_REINITIATE.includes(s),IN_PROCESS.includes(s)
+  );
+
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.white }}>
-      {/* Account summary */}
+
+      {/* ── Redesigned Account Card ── */}
       <View style={st.accountCard}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
-          <View style={st.pillBlue}>
-            <Text style={st.pillBlueText}>ACCOUNT</Text>
+        {/* Top row: avatar + name + active badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <View style={st.accountAvatar}>
+            <Text style={st.accountAvatarText}>
+              {firstAsset.customername?.charAt(0)?.toUpperCase() || '?'}
+            </Text>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: C.primaryDark, marginLeft: 8 }}>
-            {firstAsset.accountno}
-          </Text>
-          <View style={[st.pillBlue, { marginLeft: 'auto', backgroundColor: C.white, borderWidth: 1, borderColor: C.border }]}>
-            <Text style={[st.pillBlueText, { color: C.textMuted }]}>{firstAsset.trust_code}</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={st.accountName} numberOfLines={1}>{firstAsset.customername}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 }}>
+              <Text style={st.accountNo}>{firstAsset.accountno}</Text>
+              <View style={st.accountTrustCodePill}>
+                <Text style={st.accountTrustCodeText}>{firstAsset.trust_code}</Text>
+              </View>
+            </View>
+          </View>
+          {/* Asset count badge */}
+          <View style={st.assetCountBadge}>
+            <Text style={st.assetCountNum}>{result.length}</Text>
+            <Text style={st.assetCountLabel}>Assets</Text>
           </View>
         </View>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 }}>
-          👤 {firstAsset.customername}
-        </Text>
-        <Text style={{ fontSize: 11, color: C.textMuted }}>🏛  {firstAsset.trust}</Text>
+
+        {/* Divider */}
+        <View style={{ height: 1, backgroundColor: C.border, marginBottom: 8 }} />
+
+        {/* Trust row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={st.trustIconBox}>
+            <Text style={{ fontSize: 11 }}>🏛</Text>
+          </View>
+          <Text style={st.trustName} numberOfLines={1}>{firstAsset.trust}</Text>
+        </View>
       </View>
 
       {/* List header */}
@@ -654,7 +693,7 @@ const AssetSelectionScreen = ({ apiData, onProceed }) => {
           const isSel    = selected === item.assetcodes;
           const inProc   = IN_PROCESS.includes(s);
           const canReinit = CAN_REINITIATE.includes(s);
-
+          console.log('Rendering card', item.assetcodes, { s, isSel, inProc, canReinit });
           return (
             <TouchableOpacity
               style={[
@@ -765,10 +804,12 @@ const ValuationFormScreen = ({ apiData, selectedCode, onBack, onSubmit }) => {
     priority_status:      asset.priority_status      || '',
     structural_soundness: asset.structural_soundness || '',
     construction_status:  asset.construction_status  || '',
-    positive_factor:      asset.positive_factor      || [],
-    negative_factor:      asset.negative_factor      || [],
+    positive_factor:      asset.positive_factor  ? asset.positive_factor.split('#,')  : [] ,
+    negative_factor:      asset.negative_factor ? asset.negative_factor.split('#,') : [] ,
     positive_factor_freetext: asset.positive_factor_freetext || '',
     negative_factor_freetext: asset.negative_factor_freetext || '',
+    tmp_negative_factor: valuationcommon.negative_factors || [], // for multi-select handling
+    tmp_positive_factor: valuationcommon.positive_factors || [], // for multi-select handling
   });
 
   const set = (k) => (v) => {
@@ -848,6 +889,7 @@ const ValuationFormScreen = ({ apiData, selectedCode, onBack, onSubmit }) => {
       });
     }
   };
+  
 
   // helper shorthands
   const fp = (k) => ({ value: form[k], onChange: set(k), error: errors[k], touched: touched[k], required: true });
@@ -1096,66 +1138,54 @@ const SuccessScreen = ({ assetCode, onReset }) => (
 //  MAIN SCREEN (entry point)
 // ═══════════════════════════════════════════════════════════════════════════════
 const InitiateValuationFinalScreen = ({ navigation, route }) => {
-  // In production replace MOCK_API with:
-  // const apiData = route?.params?.apiData || MOCK_API;
-  const apiData = MOCK_API;
-
   const [screen,       setScreen]       = useState('SELECT'); // SELECT | FORM | SUCCESS
   const [selectedCode, setSelectedCode] = useState(null);
-const [pageLoading, setPageLoading] = useState(true);
-const [submitting,  setSubmitting]  = useState(false);
-  const first      = apiData.result[0];
+  const [pageLoading,  setPageLoading]  = useState(true);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [apiData,      setApiData]      = useState(null);
+
+  // 'idle' | 'noData' | 'apiError'
+  const [fetchState,   setFetchState]   = useState('idle');
+  const [fetchError,   setFetchError]   = useState(null);
+// Add this state at the top with your other states
+  const [submitError, setSubmitError] = useState(null);
   const screenBadge = screen === 'SELECT' ? '📋 Select' : screen === 'FORM' ? '📝 Form' : '✅ Done';
-   useLayoutEffect(() => {
-                navigation.setOptions({
-                  headerShown: false,
-                });
-              }, [navigation ]);
-              
-    // useEffect(() => {
-    // Simulate API loading delay
-   // const timer = setTimeout(() => {
-   //   setPageLoading(false);
-   // }, 1500); // 1.5 seconds delay
-   // return () => clearTimeout(timer);
-   //  }, []); 
-     
-      useEffect(() => {
-    // Fetch valuation data on mount
-        getValuationData(route.params.account_no);
-      },[]);
 
-   const handleSubmit = async (params) => {
-        try {
-                setSubmitting(true);
-            let result = await Api.send(params, '/valuation/add');
-             setScreen('SUCCESS');
-              setSubmitting(false);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to submit. Please try again.');
-        }finally{
-              setSubmitting(false);
-        } 
-    };
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
-    const getValuationData = async (account_no) => {
-        try {
-                
-                let result = await Api.send({account_no: account_no}, '/valuation/newsearch');
-                console.log('Fetched valuation data:', JSON.stringify(result) );
-                result.result.forEach((item, index) => {
-                  item.positive_factor = item.positive_factor ? item.positive_factor.split('#,').map((f) => f.trim()) : [];
-                  item.negative_factor = item.negative_factor ? item.negative_factor.split('#,').map((f) => f.trim()) : [];
-                 });
-                setPageLoading(false);
-                 
-        } catch (error) {
-            Alert.alert('Error', 'Failed to submit. Please try again.');
-             setPageLoading(false);
-        }
+  useEffect(() => {
+    getassetdata();
+  }, []);
 
-    }  
-     
+  const getassetdata = async () => {
+    setPageLoading(true);
+    setFetchState('idle');
+    setFetchError(null);
+    try {
+      const res = await Api.send(
+        { account_no: route?.params?.account_no },
+        'valuation/newsearch'
+      );
+      // Check if result is empty (no assets linked to this loan)
+      if (!res || !res.result || res.result.length === 0) {
+        setFetchState('noData');
+        setPageLoading(false);
+        return;
+      }
+      console.log(JSON.stringify(res), "=================== API Response");
+      setApiData(res);
+      setFetchState('idle');
+      setPageLoading(false);
+    } catch (err) {
+      console.log('Valuation fetch error:', err);
+      setFetchError(err?.message || 'Network request failed');
+      setFetchState('apiError');
+      setPageLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.primaryDark }}>
       <StatusBar barStyle="light-content" backgroundColor={C.primaryDark} />
@@ -1165,17 +1195,10 @@ const [submitting,  setSubmitting]  = useState(false);
         <View style={st.headerBubble1} />
         <View style={st.headerBubble2} />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={st.headerIconBox}>
-                <TouchableOpacity
-                                             style={st.backBtn}
-                                             onPress={() => navigation.goBack()}
-                     
-                                             activeOpacity={0.75}
-                                         >
-                                             <Icon name="arrow-left" size={20} color={COLORS.white} />
-                                         </TouchableOpacity>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
+                <TouchableOpacity style={st.headerIconBox}  onPress={() => navigation.goBack()}> 
+                     <Icon name="arrow-left" size={20} color={COLORS.white} /> 
+                  </TouchableOpacity>
+           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={st.headerSub}>EARC RETAIL</Text>
             <Text style={st.headerTitle}>Initiate Valuation</Text>
           </View>
@@ -1192,10 +1215,10 @@ const [submitting,  setSubmitting]  = useState(false);
             <Text style={st.pillBlueText}>LOAN</Text>
           </View>
           <Text style={{ fontSize: 12, color: C.primary, fontWeight: '700', marginLeft: 7 }}>
-            {first.accountno}
+            {route?.params?.accountno}
           </Text>
           <Text style={{ fontSize: 11, color: C.textMuted, marginLeft: 5 }}>
-            · {first.customername}
+            · {route.params.customer_name}
           </Text>
           {screen === 'FORM' && selectedCode && (
             <View style={[st.pillBlue, { marginLeft: 'auto' }]}>
@@ -1208,39 +1231,150 @@ const [submitting,  setSubmitting]  = useState(false);
       {/* ── SCREEN CONTENT ── */}
       <View style={{ flex: 1, backgroundColor: C.white }}>
 
-           {pageLoading ? (
-    <InitialLoader />                          // ← shows while API fetches
-  ) : screen === 'SELECT' ? (
-    <AssetSelectionScreen  
-    apiData={apiData}
+        {/* 1. Loading */}
+        {pageLoading ? (
+          <InitialLoader />
+
+        /* 2. No assets found for this loan */
+        ) : fetchState === 'noData' ? (
+          <NoDataScreen
+            accountno={route?.params?.account_no}
+            onGoBack={() => navigation.goBack()}
+          />
+
+        /* 3. API fetch failure */
+        ) : fetchState === 'apiError' ? (
+          <ApiErrorScreen
+            errorMessage={fetchError}
+            onRetry={getassetdata}
+            onGoBack={() => navigation.goBack()}
+          />
+
+        /* 4. Asset selection */
+        ) : screen === 'SELECT' ? (
+          <AssetSelectionScreen
+            apiData={apiData}
             onProceed={(code) => { setSelectedCode(code); setScreen('FORM'); }}
-    />
-  ) : screen === 'FORM' ? (
-    <ValuationFormScreen
-     apiData={apiData}
+          />
+
+        /* 5. Valuation form */
+        ) : screen === 'FORM' ? (
+          <ValuationFormScreen
+            apiData={apiData}
             selectedCode={selectedCode}
             onBack={() => setScreen('SELECT')}
-      onSubmit={async (payload) => { 
-        console.log('Submitting valuation...', payload);                   // ← show overlay
-        try {
-           await handleSubmit(payload); // ← API call
-          // setTimeout(() => {
-          //   setScreen('SUCCESS');
-          //   setSubmitting(false);  
-          // }, 10000); // Simulate API delay
-        } catch (e) {
-          Alert.alert('Error', 'Failed to submit. Please try again.');
-        } finally {
-                 setSubmitting(false);         
-        }
-      }}
-    />
-  ) : <SuccessScreen assetCode={selectedCode} onReset={() => { setScreen('SELECT'); setSelectedCode(null); }} />}
-          <SubmitLoader visible={submitting} /> 
+            onSubmit={async (payload) => {
+              setSubmitting(true);
+              try {
+                console.log('Submitting payload:', payload);
+                await Api.send(payload, 'valuation/add');
+                console.log('Submission successful');
+                setScreen('SUCCESS');
+                setSubmitting(false);
+              } catch (e) {
+                Alert.alert('Error', 'Failed to submit. Please try again.');
+                setSubmitError(e?.message || 'Something went wrong. Please try again.');
+                 setSubmitting(false);
+              }  
+            }}
+          />
+
+        /* 6. Success */
+        ) : (
+          <SuccessScreen
+            assetCode={selectedCode}
+            onReset={() => {
+              setScreen('SELECT');
+              setSelectedCode(null);
+              getassetdata();
+            }}
+          />
+        )}
+
+        <SubmitLoader visible={submitting} />
+        <SubmitError   visible={!!submitError}  submitError={submitError} onRequestClose={() => setSubmitError(null)}/>
       </View>
     </SafeAreaView>
   );
 };
+
+const SubmitError = ( { visible, submitError, onRequestClose } ) => (
+  <Modal
+  transparent
+  visible={visible}
+  animationType="fade"
+  onRequestClose={onRequestClose}
+>
+  <View style={st.dialogOverlay}>
+    <View style={st.dialogBox}>
+
+      {/* Icon */}
+      <View style={[st.dialogIconCircle, {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FCA5A5',
+        marginBottom: 18,
+      }]}>
+        <Text style={st.dialogIconEmoji}>❌</Text>
+      </View>
+
+      <Text style={st.dialogTitle}>Submission Failed</Text>
+
+      <Text style={st.dialogBody}>
+        We couldn't submit the valuation. Please check your connection and try again.
+      </Text>
+
+      {/* Error detail */}
+      {!!submitError && (
+        <View style={{
+          backgroundColor: '#FEF2F2',
+          borderRadius: 10,
+          padding: 12,
+          borderWidth: 1,
+          borderColor: '#FCA5A5',
+          marginTop: 8,
+          marginBottom: 4,
+          width: '100%',
+        }}>
+          <Text style={{
+            fontSize: 11,
+            color: '#B91C1C',
+            textAlign: 'center',
+            lineHeight: 17,
+            fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+          }} numberOfLines={3}>
+            {submitError}
+          </Text>
+        </View>
+      )}
+
+      <View style={st.dialogBtnRow}>
+        {/* Dismiss */}
+        <TouchableOpacity
+          style={[st.btnOutline, { flex: 1 }]}
+          onPress={() => setSubmitError(null)}
+          activeOpacity={0.8}
+        >
+          <Text style={st.btnOutlineText}>Dismiss</Text>
+        </TouchableOpacity>
+
+        {/* Retry — re-calls onSubmit with same payload */}
+        <TouchableOpacity
+          style={[st.btnPrimary, { flex: 1 }]}
+          onPress={() => {
+            setSubmitError(null);
+            // Re-trigger submit — user taps Submit again from form
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={st.btnPrimaryText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+
+    </View>
+  </View>
+</Modal>
+);
+
 
 export default InitiateValuationFinalScreen;
 
@@ -1265,18 +1399,102 @@ const st = StyleSheet.create({
   headerBubble1: { position: 'absolute', top: -28, right: -18, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.07)' },
   headerBubble2: { position: 'absolute', bottom: -32, left: 48, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.05)' },
   headerIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  headerSub:     { fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 1.2, flex:1,justifyContent:'center',alignItems:'center'   },
+  headerSub:     { fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 1.2 },
   headerTitle:   { fontSize: 18, fontWeight: '800', color: C.white },
   headerBadge:   { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 4 },
   headerBadgeText: { fontSize: 11, fontWeight: '700', color: C.white },
 
-  // ── Loan chip ──  
+  // ── Loan chip ──
   loanChip: { backgroundColor: C.primaryLight, paddingHorizontal: 16, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border },
   pillBlue: { backgroundColor: C.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   pillBlueText: { fontSize: 9, fontWeight: '800', color: C.white, letterSpacing: 0.5 },
 
-  // ── Account card ──
-  accountCard: { margin: 14, marginBottom: 0, backgroundColor: C.primaryLight, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: C.border },
+  // ── Account card (redesigned) ──
+  accountCard: {
+    margin: 14,
+    marginBottom: 0,
+    backgroundColor: C.white,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    ...Platform.select({
+      ios:     { shadowColor: C.primary, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
+      android: { elevation: 3 },
+    }),
+  },
+  accountAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountAvatarText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: C.white,
+  },
+  accountName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: C.text,
+  },
+  accountNo: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.textMuted,
+  },
+  accountTrustCodePill: {
+    backgroundColor: C.primaryLight,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  accountTrustCodeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  assetCountBadge: {
+    backgroundColor: C.primaryLight,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+    minWidth: 48,
+  },
+  assetCountNum: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.primary,
+    lineHeight: 18,
+  },
+  assetCountLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: C.textMuted,
+    marginTop: 1,
+  },
+  trustIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: C.grey,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustName: {
+    fontSize: 11,
+    color: C.textMuted,
+    fontWeight: '500',
+    flex: 1,
+  },
 
   // ── Asset card ──
   assetCard: {
@@ -1401,4 +1619,312 @@ const st = StyleSheet.create({
   successBadgeText: { fontSize: 10, fontWeight: '800', color: '#10B981', letterSpacing: 1 },
   successAssetCard: { backgroundColor: C.primaryLight, borderRadius: 14, padding: 16, marginBottom: 24, width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 },
   successCheck:     { width: 32, height: 32, borderRadius: 10, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STYLESHEET — NO DATA SCREEN  (nd)
+// ═══════════════════════════════════════════════════════════════════════════════
+const nd = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 48,
+    paddingBottom: 40,
+    backgroundColor: C.white,
+  },
+  illustrationWrap: {
+    width: 130,
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  outerRing: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#EBF1FF',
+  },
+  middleRing: {
+    position: 'absolute',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#D1DCF8',
+  },
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: C.white,
+    borderWidth: 2,
+    borderColor: C.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios:     { shadowColor: C.primary, shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+      android: { elevation: 3 },
+    }),
+  },
+  iconEmoji: { fontSize: 32 },
+
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.grey,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 14,
+    gap: 6,
+  },
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: C.textMuted,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: C.textMuted,
+    letterSpacing: 0.8,
+  },
+
+  heading: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: C.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 13,
+    color: C.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+
+  loanChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.primaryLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: C.border,
+    marginBottom: 14,
+    gap: 10,
+  },
+  loanChipLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textMuted,
+    letterSpacing: 0.8,
+  },
+  loanChipValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.primaryDark,
+  },
+
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: C.infoLight,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 28,
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  infoIcon: { fontSize: 16, marginTop: 1 },
+  infoText: {
+    fontSize: 12,
+    color: C.info,
+    lineHeight: 18,
+    flex: 1,
+  },
+
+  backBtn: {
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: C.border,
+    backgroundColor: C.white,
+    alignItems: 'center',
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.text,
+  },
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STYLESHEET — API ERROR SCREEN  (ae)
+// ═══════════════════════════════════════════════════════════════════════════════
+const ae = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 48,
+    paddingBottom: 40,
+    backgroundColor: C.white,
+  },
+  illustrationWrap: {
+    width: 130,
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  ring: {
+    position: 'absolute',
+  },
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 2,
+    borderColor: '#FCA5A5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios:     { shadowColor: C.error, shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+      android: { elevation: 3 },
+    }),
+  },
+  iconEmoji: { fontSize: 32 },
+
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: C.error,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: C.error,
+    letterSpacing: 0.8,
+  },
+
+  heading: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: C.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 13,
+    color: C.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+
+  errorBox: {
+    width: '100%',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    marginBottom: 20,
+  },
+  errorBoxLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.error,
+    letterSpacing: 0.8,
+    marginBottom: 5,
+  },
+  errorBoxText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+
+  tipsBox: {
+    width: '100%',
+    backgroundColor: C.grey,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: C.textMuted,
+    flexShrink: 0,
+  },
+  tipText: {
+    fontSize: 12,
+    color: C.textMuted,
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  retryBtn: {
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 14,
+    backgroundColor: C.primaryDark,
+    alignItems: 'center',
+    marginBottom: 12,
+    ...Platform.select({
+      ios:     { shadowColor: C.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 5 },
+    }),
+  },
+  retryBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.white,
+    letterSpacing: 0.3,
+  },
+  goBackBtn: {
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: C.border,
+    backgroundColor: C.white,
+    alignItems: 'center',
+  },
+  goBackBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.text,
+  },
 });

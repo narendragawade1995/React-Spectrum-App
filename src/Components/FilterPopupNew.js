@@ -4,7 +4,7 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  ScrollView,
+  ScrollView,  
   Animated,
   PanResponder,
   Dimensions,

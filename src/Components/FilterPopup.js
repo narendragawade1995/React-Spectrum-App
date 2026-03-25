@@ -15,74 +15,50 @@ import {
   ActivityIndicator,
 } from 'react-native-paper';
 
+import Api from '../Utilities/apiService';
+
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = {} }) => {
+const BottomFilterPopup = ({ visible, onClose, onApply, currentFilters = {},filterData }) => {
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
   const [overlayOpacity] = useState(new Animated.Value(0));
   
   const [filters, setFilters] = useState({
-    customerName: '',
-    accountNumber: '',
-    trustCode: '',
-    sellingBank: '',
-    disposition: '',
-    zone: '',
+      customer_name: '',
+      accountno: '',
+      trust_name: '',
+      selling_bank: '',
+      disposition: '',
+      zone: '',
+      resolution_type: '',
     ...currentFilters,
   });
 
   const [accountSuggestions, setAccountSuggestions] = useState([]);
   const [isSearchingAccounts, setIsSearchingAccounts] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
 
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState(null);
-
+  console.log("Filter Data for Dropdowns:", filterData?.second?.callstatus);
+  let filterOptions = {}
   // Fixed options data
-  const filterOptions = {
-    customerName: [
-      'Alice Thompson',
-      'Robert Chen',
-      'Maria Garcia',
-      'James Wilson',
-      'Lisa Anderson',
-      'David Kumar',
-      'Emma Rodriguez',
-    ],
-    trustCode: [
-      'TC-2024-001',
-      'TC-2024-002', 
-      'TC-2024-003',
-      'TC-2024-004',
-      'TC-2024-005',
-      'TC-2024-006',
-    ],
-    sellingBank: [
-      'HDFC Bank',
-      'ICICI Bank',
-      'State Bank of India',
-      'Axis Bank',
-      'Kotak Mahindra Bank',
-      'Punjab National Bank',
-    ],
-    disposition: [
-      'New Lead',
-      'In Progress',
-      'Follow Up Required',
-      'Completed',
-      'On Hold',
-      'Cancelled',
-    ],
-    zone: [
-      'Mumbai Central',
-      'Mumbai North',
-      'Mumbai South',
-      'Pune District',
-      'Nashik Region',
-      'Aurangabad Zone',
-    ],
-  };
+  if(filterData?.second && filterData?.second && filterData?.second?.callstatus ){
+    filterOptions.customerName = [];
+    
+    filterOptions.trustCode = filterData.second.trustlist.map(ele=>ele.trust_code) || [];
+    filterOptions.sellingBank = filterData.second.trustlist.map(ele=>ele.selling_bank) || [];
+    filterOptions.disposition=  filterData.second.disposition_master.map(ele=>ele.disposition_name) || [];
+    filterOptions.resolution_type=  filterData.first.resolution.map(ele=>ele.reol_type) || [];
 
+    filterOptions.zone= [
+      'NORTH','EASH','SOUTH','WEST','WEST I','WEST II','ROM'
+    ];
+  };
+  
+  console.log("Processed Filter Options:", filterOptions);
   useEffect(() => {
     if (visible) {
       Animated.parallel([
@@ -114,28 +90,37 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
   }, [visible]);
 
   // Account number API search
-  const searchAccounts = async (query) => {
+  const searchAccounts = async (query, from) => {
     if (query.length < 3) {
       setAccountSuggestions([]);
       setShowAccountDropdown(false);
+      setShowCustomerDropdown(false);
       return;
     }
 
     setIsSearchingAccounts(true);
     try {
       // Replace with your actual API endpoint
-      const response = await fetch(`YOUR_API_ENDPOINT/search-accounts?q=${query}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authentication headers
-          // 'Authorization': 'Bearer YOUR_TOKEN',
-        },
-      });
+      // const response = await fetch(`YOUR_API_ENDPOINT/search-accounts?q=${query}`, {
+      //   method: 'GET',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     // Add authentication headers
+      //     // 'Authorization': 'Bearer YOUR_TOKEN',
+      //   },
+      // });
+      let params = {}
+      if (from ){
+        params = {customer_name:query, from:'search'}
+      }else{
+        params = {accountno:query, from:'search'}
+      }
 
-      if (response.ok) {
+
+      const response = await Api.send('secure_borrowerdetails/secure_borrowerdetailsData',params)
+      if (response) {
         const result = await response.json();
-        setAccountSuggestions(result.data || []);
+        setAccountSuggestions(result.ArrayOfResponse || []);
         setShowAccountDropdown(true);
       }
     } catch (error) {
@@ -149,13 +134,24 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
   // Debounced account search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (filters.accountNumber.length >= 3) {
-        searchAccounts(filters.accountNumber);
+      if (filters.customer_name.length >= 3) {
+        searchAccounts(filters.customer_name, true);
       }
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [filters.accountNumber]);
+  }, [filters.customer_name]);
+
+    useEffect(() => {
+    const timer = setTimeout(() => {
+      if (filters.accountno.length >= 3) {
+        searchAccounts(filters.accountno);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [filters.accountno]);
+ 
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -169,12 +165,13 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
 
   const resetFilters = () => {
     setFilters({
-      customerName: '',
-      accountNumber: '',
-      trustCode: '',
-      sellingBank: '',
+      customer_name: '',
+      accountno: '',
+      trust_name: '',
+      selling_bank: '',
       disposition: '',
       zone: '',
+      resolution_type: '',
     });
     setOpenDropdown(null);
     setShowAccountDropdown(false);
@@ -182,7 +179,7 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
   };
 
   const applyFilters = () => {
-    onApplyFilters(filters);
+    onApply(filters);
     onClose();
   };
 
@@ -248,9 +245,9 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
       <View style={styles.searchInputContainer}>
         <TextInput
           style={styles.searchInput}
-          value={filters.accountNumber}
+          value={filters.accountno}
           onChangeText={(text) => {
-            handleFilterChange('accountNumber', text);
+            handleFilterChange('accountno', text);
             if (text.length < 3) {
               setShowAccountDropdown(false);
             }
@@ -274,7 +271,7 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
               <TouchableOpacity
                 style={styles.optionItem}
                 onPress={() => {
-                  handleFilterChange('accountNumber', item.accountNumber);
+                  handleFilterChange('accountno', item.accountNumber);
                   setShowAccountDropdown(false);
                 }}
               >
@@ -291,6 +288,56 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
       )}
     </View>
   );
+
+   const renderCustomerNameField = () => (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.fieldLabel}>Borrower Name</Text>
+      <View style={styles.searchInputContainer}>
+        <TextInput
+          style={styles.searchInput}
+          value={filters.customer_name}
+          onChangeText={(text) => {
+            handleFilterChange('customer_name', text);
+            if (text.length < 3) {
+              setShowAccountDropdown(false);
+            }
+          }}
+          placeholder="Enter at least 3 characters..."
+          placeholderTextColor="#9CA3AF"
+        />
+        {isSearchingAccounts && (
+          <ActivityIndicator size="small" color="#3B82F6" style={styles.searchLoader} />
+        )}
+      </View>
+
+      {showAccountDropdown && accountSuggestions.length > 0 && (
+        <View style={styles.dropdownList}>
+          <FlatList
+            data={accountSuggestions}
+            keyExtractor={(item, index) => index.toString()}
+            style={styles.optionsList}
+            nestedScrollEnabled
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.optionItem}
+                onPress={() => {
+                  handleFilterChange('customer_name', item.customerName);
+                  setShowAccountDropdown(false);
+                }}
+              >
+                <Text style={styles.optionText}>
+                  {item.customerName}
+                </Text>
+                
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      )}
+    </View>
+  );
+
+   
 
   if (!visible) return null;
 
@@ -330,12 +377,16 @@ const BottomFilterPopup = ({ visible, onClose, onApplyFilters, currentFilters = 
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         >
-          {renderDropdownField('customerName', 'Customer Name', filterOptions.customerName)}
+         
+         
           {renderAccountField()}
-          {renderDropdownField('trustCode', 'Trust Code', filterOptions.trustCode)}
-          {renderDropdownField('sellingBank', 'Selling Bank', filterOptions.sellingBank)}
+           {renderCustomerNameField()}
+          {renderDropdownField('trust_name', 'Trust Code', filterOptions.trustCode)}
+          {renderDropdownField('selling_bank', 'Selling Bank', filterOptions.sellingBank)}
           {renderDropdownField('disposition', 'Disposition', filterOptions.disposition)}
           {renderDropdownField('zone', 'Zone', filterOptions.zone)}
+          {renderDropdownField('resolution_type', 'Resolution Type', filterOptions.zone)}
+
         </ScrollView>
 
         {/* Action Buttons */}

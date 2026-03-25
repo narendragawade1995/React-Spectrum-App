@@ -1,15 +1,7 @@
 /**
  * BottomSheetModal.js
- * Reusable native-style bottom sheet for dropdown selections.
- *
- * Props:
- *   visible      {boolean}   - show/hide modal
- *   title        {string}    - sheet title
- *   subtitle     {string}    - optional subtitle (e.g. account number)
- *   options      {Array}     - [{ label, icon? }]
- *   selectedValue {string}   - currently selected option label
- *   onSelect     {function}  - called with selected label string
- *   onClose      {function}  - called when backdrop or back pressed
+ * Generic bottom sheet modal for dropdown selections.
+ * Used for Payment Type, Payment For selections.
  */
 
 import React from 'react';
@@ -46,13 +38,9 @@ const BottomSheetModal = ({
               <View style={styles.handle} />
 
               <Text style={styles.title}>{title}</Text>
-              {subtitle ? (
-                <Text style={styles.subtitle}>{subtitle}</Text>
-              ) : null}
+              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                bounces={false}>
+              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {options.map(opt => {
                   const isSelected = selectedValue === opt.label;
                   return (
@@ -60,9 +48,7 @@ const BottomSheetModal = ({
                       key={opt.label}
                       style={[
                         styles.optionRow,
-                        isSelected
-                          ? styles.optionRowSelected
-                          : styles.optionRowDefault,
+                        isSelected ? styles.optionRowSelected : styles.optionRowDefault,
                       ]}
                       onPress={() => onSelect(opt.label)}
                       activeOpacity={0.7}>
@@ -81,9 +67,7 @@ const BottomSheetModal = ({
                           {opt.label}
                         </Text>
                       </View>
-                      {isSelected && (
-                        <Text style={styles.checkmark}>✓</Text>
-                      )}
+                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
                     </TouchableOpacity>
                   );
                 })}
@@ -117,17 +101,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: '#64748b',
-    marginBottom: 14,
-  },
+  title: {fontSize: 16, fontWeight: '700', color: '#1e293b', marginBottom: 4},
+  subtitle: {fontSize: 11, color: '#64748b', marginBottom: 14},
   optionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -138,30 +113,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginBottom: 8,
   },
-  optionRowSelected: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#001a6e',
-  },
-  optionRowDefault: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-  },
-  optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  optionIcon: {
-    fontSize: 18,
-  },
-  optionLabel: {
-    fontSize: 14,
-  },
-  checkmark: {
-    color: '#001a6e',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  optionRowSelected: {backgroundColor: '#eff6ff', borderColor: '#001a6e'},
+  optionRowDefault: {backgroundColor: '#f8fafc', borderColor: '#e2e8f0'},
+  optionLeft: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  optionIcon: {fontSize: 18},
+  optionLabel: {fontSize: 14},
+  checkmark: {color: '#001a6e', fontSize: 16, fontWeight: '700'},
 });
 
 export default BottomSheetModal;

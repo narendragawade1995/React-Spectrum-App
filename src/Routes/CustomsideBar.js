@@ -9,14 +9,14 @@ import Loader from "../Components/Loader";
 import { COLORS, FONTWEIGHT, SIZES } from "../theme/theme";
 import { resetState } from "../Redux/Slicer/UserSlice";
 import { CommonActions } from "@react-navigation/native";
-const RouteList = [
+const RouteList = [ 
     {
         icon: { name: 'security', class: 'materialicon' },
         label: 'Secure',
         navigateTo: 'Home',
         children: [
             { label: 'Borrower List', navigateTo: 'Home' },
-            { label: 'Disposition', navigateTo: 'accountsearch', customParam: { 'custom_redirect': 'Disposition' } },
+            // { label: 'Disposition', navigateTo: 'accountsearch', customParam: { 'custom_redirect': 'Disposition' } },
             { label: 'Disposition History', navigateTo: 'dishistory' },
             
             // { label: 'To Do List', navigateTo: 'todolist' },
@@ -28,8 +28,8 @@ const RouteList = [
         navigateTo: 'Finance',
         children: [
           { label: 'Borrower List', navigateTo: 'Unsecure' },
-          { label: 'Disposition', navigateTo: 'accountsearch', customParam: { 'custom_redirect': 'Disposition' } },
-          // { label: 'Disposition History', navigateTo: 'dishistory' },
+          // { label: 'Disposition', navigateTo: 'accountsearch', customParam: { 'custom_redirect': 'Disposition' } },
+           { label: 'Disposition History', navigateTo: 'Unsecure_disposition_history' },
           // { label: 'To Do List', navigateTo: 'todolist' },
         ]
     },
@@ -68,7 +68,7 @@ const CustomsideBar = ({ navigation }) => {
     const toggleOnlineStatus = () => {
       setIsOnline(!isOnline);
       // Here you can add logic to handle online/offline status change
-      Api.setMode(!isOnline ? 'online' : 'offline')
+      // Api.setMode(!isOnline ? 'online' : 'offline')
       // console.log(`App is now ${!isOnline ? 'online' : 'offline'}`);
   };
     const renderMenuItem = (item) => {
@@ -177,7 +177,7 @@ const CustomsideBar = ({ navigation }) => {
             </ScrollView>
 
             <View style={styles.bottomSection}>
-                <List.Accordion
+                {/* <List.Accordion
                     title="Settings"
                     left={props => <Icon {...props} name="settings" size={24} color={COLORS.primary} style={styles.listAccordionIcon} />}
                     expanded={expandedItems === 'Settings'}
@@ -191,8 +191,8 @@ const CustomsideBar = ({ navigation }) => {
                             color={COLORS.primary}
                         />
                     </View>
-                    {/* Add more settings items here*/}
-                </List.Accordion>
+                    
+                </List.Accordion> */}
 
                 <TouchableRipple onPress={() => { handleLogout() }}>
                     <View style={styles.bottomItem}>
