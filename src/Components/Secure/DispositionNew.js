@@ -316,7 +316,7 @@ useLayoutEffect(() => {
 
     if (key === 'type' && value !== 'Site Visit') {
       filterFieldsByType(formFieldsCopy, value);
-    }
+    } 
     if (key === 'type' && value === 'Site Visit') {
       handleDispositionChange('Site Visit');
     }
@@ -330,7 +330,7 @@ useLayoutEffect(() => {
          let label = value === "Call back" ? "call_back_reason" : "reason";
          let sub_disposition  = typeof match.drop_down_value === 'string'  ? JSON.parse(match.drop_down_value) : match.drop_down_value;
          console.log('sub_disposition*************',   sub_disposition);   
-         let sub_sub_dispo = sub_disposition.find(f => f.formControl_name === labellll ++);
+         let sub_sub_dispo = sub_disposition.find(f => f.formControl_name === label);
              console.log('sub_sub_dispo*************',   sub_sub_dispo);
                console.log('formFields*************',   formFields);
                formFieldsCopyTemp[1].dropdowndata = sub_sub_dispo.dropdowndata;
@@ -389,14 +389,14 @@ useLayoutEffect(() => {
     setField('disposition_id', match.id);
 
     const currentType = form.type || '';
-    const final = ddv.filter(f => f.s_type === 'both' || f.s_type === currentType);
-    setFormFields(final);
+    const final = ddv.filter(f => f.s_type  === 'both' || f.s_type === currentType);
+    setFormFields(final); 
   };
 
-  // ─── Validation ──────────────────────────────────────────────────────────────
+  // ─── Validation ───────────────────────────   ───────────────────────────────────
   const validate = () => {
     const newErrors = {};
-
+ 
     if (!form.type) newErrors.type = 'Please select Type';
     if (form.type === 'Field Visit' && !form.nature) newErrors.nature = 'Please select Nature';
     if (!form.disposition) newErrors.disposition = 'Please select Disposition';
